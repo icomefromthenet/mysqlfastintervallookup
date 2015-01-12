@@ -1,0 +1,143 @@
+-- -----------------------------------------------------
+-- functions for package
+-- -----------------------------------------------------
+DELIMITER $$
+
+-- -----------------------------------------------------
+-- function utl_is_valid_date_range
+-- -----------------------------------------------------
+DROP function IF EXISTS `utl_is_valid_date_range`$$
+
+CREATE FUNCTION `utl_is_valid_date_range`(validFrom DATE,validTo DATE) 
+RETURNS INTEGER DETERMINISTIC BEGIN
+	DECLARE isValid INT DEFAULT 0;
+
+	-- test if closure date occurs after the opening date 
+	-- and opening date does not occur in past.
+	-- smallest temportal unit is 1 day we need to cast to a date
+	IF CAST(validFrom AS DATE) <= CAST(validTo AS DATE) && CAST(validFrom AS DATE) >= CAST(NOW() AS DATE) THEN
+		SET isValid = 1;
+	END IF;
+
+	RETURN isValid;
+
+END;
+$$
+
+-- -----------------------------------------------------
+-- function utl_fork_node
+-- -----------------------------------------------------
+DROP FUNCTION IF EXISTS `utl_fork_node`$$
+
+CREATE FUNCTION `utl_fork_node`(lower INT, upper INT) RETURNS INTEGER 
+BEGIN
+	-- Used in the RI Tree 
+	DECLARE treeHeight INT DEFAULT 0;
+	DECLARE treeRoot INT DEFAULT 0; 
+	DECLARE treeNode INT DEFAULT 0; 
+	DECLARE searchStep INT DEFAULT 0;
+	
+	SET treeHeight  = ceil(LOG2((SELECT MAX(slot_id) FROM slots)+1));
+	SET treeRoot    = power(2,(treeHeight-1)); 
+	SET treeNode    = treeRoot;
+	SET searchStep  =  treeNode / 2;
+
+	myloop:WHILE searchStep >= 1 DO
+	    
+	    IF upper < treeNode THEN SET treeNode = treeNode - searchStep;
+	    ELSEIF lower > treeNode THEN SET treeNode = treeNode + searchStep;
+	    ELSE LEAVE myloop;
+	    END IF;
+	    
+	    SET searchStep = searchStep / 2;
+	    
+  	END WHILE myloop;
+	
+	RETURN treeNode;
+	
+END;
+$$
+
+-- -----------------------------------------------------
+-- Procedures for package
+-- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Following utl_proc_* have been adapted from 
+-- https://github.com/CaptTofu/Stored-procedure-debugging-routines/blob/master/proclog.sql
+-- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Procedures for `setupProcLog`
+-- -----------------------------------------------------
+DROP PROCEDURE IF EXISTS `util_proc_setup`$$
+
+CREATE PROCEDURE `util_proc_setup`()
+BEGIN
+    DECLARE proclog_exists INT DEFAULT 0;
+
+    /* 
+       check if proclog is existing. This check seems redundant, but
+       simply relying on 'create table if not exists' is not enough because
+       a warning is thrown which will be caught by your exception handler
+    */
+    SELECT count(*) INTO `proclog_exists`
+        FROM `information_schema`.`tables` 
+        WHERE `table_schema` = database() AND `table_name` = 'proclog';
+
+    IF proclog_exists = 0 THEN 
+        CREATE TABLE IF NOT EXISTS `proclog`(
+             `entrytime` DATETIME
+            ,`connection_id` INT NOT NULL DEFAULT 0
+            ,`msg` VARCHAR(512)
+        );
+    END IF;
+    
+    /* 
+     * temp table is not checked in information_schema because it is a temp
+     * table
+     */
+    CREATE TEMPORARY TABLE IF NOT EXISTS `tmp_proclog`(
+         `entrytime` TIMESTAMP
+        ,`connection_id` INT NOT NULL DEFAULT 0
+        ,`msg` VARCHAR(512)
+    ) ENGINE = memory;
+    
+END $$
+
+-- -----------------------------------------------------
+-- Procedures for `util_proc_log`
+-- -----------------------------------------------------
+DROP PROCEDURE IF EXISTS `util_proc_log`$$
+
+CREATE PROCEDURE `util_proc_log`(IN logMsg VARCHAR(512))
+BEGIN
+  
+  DECLARE CONTINUE HANDLER FOR 1146 -- Table not found
+  BEGIN
+    CALL util_proc_setup();
+    INSERT INTO `tmp_proclog` (`connection_id`, `msg`) VALUES (CONNECTION_ID(), 'reset tmp table');
+    INSERT INTO `tmp_proclog` (`connection_id`, `msg`) VALUES (CONNECTION_ID(), logMsg);
+  END;
+
+  INSERT INTO `tmp_proclog` (connection_id, msg) VALUES (CONNECTION_ID(), logMsg);
+  
+END$$
+
+-- -----------------------------------------------------
+-- Procedures for `util_proc_cleanup`
+-- -----------------------------------------------------
+DROP PROCEDURE IF EXISTS `util_proc_cleanup`$$
+
+CREATE PROCEDURE `util_proc_cleanup` (IN logMsg VARCHAR(512))
+BEGIN
+
+   CALL util_proc_log(CONCAT("cleanup() ",IFNULL(logMsg, ''))); 
+   INSERT INTO `proclog` SELECT * FROM `tmp_proclog`;
+   DROP TABLE `tmp_proclog`;
+   
+END$$
+
+-- -----------------------------------------------------
+-- //End of  Following utl_proc_* adapted--
+-- -----------------------------------------------------
