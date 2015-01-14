@@ -1,0 +1,42 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Equals Allens Relation
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+   
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    LIMIT 1;
+
+
+-- -----------------------------------------------------------------------------
+-- Equals Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p <------------>
+--
+--  q <------------>
+-- 
+--  p1=q1 & q2=p2
+--
+-- This relation is the exact match between two intervalsso both start and end points
+-- are the same values. There is no inverse version of this relation. 
+
+    SET profiling=1;
+     
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id = @start_slot_id AND closing_slot_id = @close_slot_id; 
+    
+    SHOW profiles;

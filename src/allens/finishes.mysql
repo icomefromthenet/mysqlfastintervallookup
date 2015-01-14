@@ -1,0 +1,96 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Finishes Allens Relation
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+    
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_small_slot_id, @close_small_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 1 -- 15 minute timeslot
+    LIMIT 1 OFFSET 1;
+    
+SET profiling=1;
+    
+-- -----------------------------------------------------------------------------
+-- Finishes Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p      <------->
+--
+--  q <------------>
+-- 
+--  p1 > q1 & p2=q2
+--
+-- This relation finds interval p finishes at same time as q and interval p is the last
+-- to begin and that makes interval q the longer of the two.
+
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id > @start_slot_id AND closing_slot_id = @close_slot_id; 
+    
+/*
+ Result : This query finds for the selected slot q those slots that finish at
+          same time but are shorter. 
+          
+          We have selected a single 1 hour length timeslot Q in this query and expect to
+          find slots in the group P that finish at the same time but begin after
+          slot q starts.
+          
+          We expect that 1 slot from 15 and 1 slot from the 30 minute group have overlapping
+          end dates and start before Q (1 hour) slot.
+*/
+
+-- -----------------------------------------------------------------------------
+-- Finished-by Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p <------------>
+--
+--  q      <------->
+-- 
+--  p1 < q1 & p2=q2
+--
+-- This relation finds interval p finishes at same time as q and interval q is the last
+-- to begin and that makes interval p the longer of the two.
+
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id < @start_small_slot_id AND closing_slot_id = @close_small_slot_id; 
+
+
+
+ SHOW profiles;
+ 
+ 
+ /*
+ Result : This query finds for the selected slot q those slots that finish at
+          same time but are longer than q slot. 
+          
+          We have selected a single 15 minute length timeslot Q in this query and expect
+          slots in other groups P that finish same time but begin before
+          the slot q start.
+         
+          We have selected a slot q that ranged between 15-30 minute range of the hour and we would expect 1 slot
+          from 30 minute group to also end and begin before slot q. Though if we selected a  range from 1-15 minute range 
+          for slot q there would be no slots other slots that would forfill the criteria.
+*/

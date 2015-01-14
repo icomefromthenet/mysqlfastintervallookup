@@ -1,0 +1,95 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Starts Allens Relation
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+    
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_small_slot_id, @close_small_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 3 -- halfhour timeslot
+    LIMIT 1;
+
+
+ SET profiling=1;
+-- -----------------------------------------------------------------------------
+-- Starts Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p <------->
+--
+--  q <------------>
+-- 
+--  p1=q1 & p2<q2
+--
+-- This relation find intervals p that start at same time as q and ends within
+-- the second interval q but not at same end point (that would make it equals relation).
+-- The inverse realtion is known as started-by.
+
+   
+     
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id = @start_slot_id AND closing_slot_id < @close_slot_id; 
+    
+
+/*
+ Result : This query finds other slots in different groups that also start at
+          same time but Q is the last to end.
+          
+          We have selected a single 1 hour length timeslot Q this query will find
+          slots in other groups P (15,30,45) that starts same time and where P slot
+          is the first to end and is the short of the two slots
+*/
+
+
+-- -----------------------------------------------------------------------------
+-- Stared By Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p <------------>
+--
+--  q <------->
+-- 
+--  p1=q1 & p2>q2
+--
+-- This relation find intervals q that start at same time as p and ends within
+-- the first interval p but not at same end point (that would make it equals relation).
+-- The inverse realtion is known as started.
+
+     
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id = @start_small_slot_id AND closing_slot_id > @close_small_slot_id; 
+    
+    
+/*
+ Result : This query finds other slots in different groups that also start at
+          same time but P is the last to end .
+          
+          We have selected a single halfhour hour length timeslot Q this query will find
+          slots in other groups P (4,5,6) that starts same time and where P slots
+          end after the Q slot and P is the longer of the two slots.
+*/
+
+SHOW profiles;
+    
