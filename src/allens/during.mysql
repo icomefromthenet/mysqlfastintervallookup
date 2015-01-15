@@ -1,0 +1,108 @@
+-- -----------------------------------------------------------------------------
+-- Example of the During Allens Relation
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+    
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_small_slot_id, @close_small_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 1 -- 15 minute timeslot
+    LIMIT 1 OFFSET 1;
+    
+SET profiling=1;
+    
+-- -----------------------------------------------------------------------------
+-- During Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p   <------->
+--
+--  q <------------>
+-- 
+--  p1 > q1 & p2 < q2
+--
+-- This relation finds interval p which start and finish within q making q the longer
+-- of the two intervals or interval p starts after q and ends before q
+
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id > @start_slot_id AND closing_slot_id < @close_slot_id; 
+    
+/*
+ Result : This query finds for the selected slot q slots from other groups that are
+          shorter than and who therefore start before and end before the q slot.
+          
+          We have selected a single 1 hour length timeslot Q in this query and expect to
+          find slots in the group P that occur during this one hor slot
+          
+          We expect that we would have 2 slots from the 15 minute group, the selected
+          slots must not incldued those that start and finish with q slot.
+          
+          1 Hour slot
+          <--------------------->
+          15 minute slots
+          <----> 
+               <-----> 
+                     <----->
+                           <---->
+                           
+         Only the middle two slots would fit during criteria, the two end slots
+         would be meet finishs and starts allens relations
+*/
+
+-- -----------------------------------------------------------------------------
+-- Includes Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p <------------> 
+--
+--  q   <------->
+-- 
+--  p1 < q1 & p2 > q2
+--
+-- This relation finds interval p finishes that start before interval q and 
+-- interval q ends before interval p there for interval q shorter of the two intervals
+
+    SELECT timeslot_id,opening_slot_id,closing_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id < @start_small_slot_id AND closing_slot_id > @close_small_slot_id; 
+
+
+ SHOW profiles;
+ 
+ 
+ /*
+ Result : This query finds for the selected slot q those slots start before and end after 
+          the q slot.
+          
+          We have selected a single 15 minute length timeslot Q in this query and expect
+          slots in other groups P that start before and end after to be selected
+         
+          By selecting q slot one that occurs between 15-30 minute mark of the hour expected
+          slots from the 45,60,90,120 minute groups be selected.
+          
+          Would we expect slots from the 30 minute group? No since this slot finishes at 30
+          minute mark any 30 minute slots would not meet the criteria for during relation. 
+          Their ending slots are in common making them a finished relation.
+         
+*/

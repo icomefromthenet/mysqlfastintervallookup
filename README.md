@@ -17,8 +17,8 @@ Allens Relations
 5. meets-by
 6. overlaps
 7. overlaps-by
-8. during
-9. includes
+8. during   -> allens/during.mysql
+9. includes -> allens/during.mysql
 10. starts -> allens/starts.mysql
 11. stared-by -> allens/starts.mysql
 12. finishes -> allens/finishes.mysql
