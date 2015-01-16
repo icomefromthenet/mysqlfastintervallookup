@@ -15,8 +15,8 @@ Allens Relations
 3. after  -> allens/before.mysql
 4. meets  -> allens/meets.mysql 
 5. meets-by -> allens/meets.mysql 
-6. overlaps
-7. overlaps-by
+6. overlaps -> allens/overlaps.mysql
+7. overlaps-by allens/overlaps.mysql
 8. during   -> allens/during.mysql
 9. includes -> allens/during.mysql
 10. starts -> allens/starts.mysql

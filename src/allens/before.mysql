@@ -103,3 +103,5 @@ SET profiling=1;
           We would expect that we get (q1 + INTERVAL 2 hour) ie 2-3 am slot. This
           slot occurs after the q slot and has one slot between.
 */
+
+ SHOW profiles;

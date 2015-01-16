@@ -1,0 +1,52 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Alings Combination (Start,Finishes)
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+   
+    
+SET profiling=1;
+
+
+-- -----------------------------------------------------------------------------
+-- Align
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts
+--       p <------->      p <------->
+--  q <------------>  OR  q <------------>
+-- 
+--     Finishes                  Starts                         Equal 
+-- ( (p1 > q1 AND p2=q2) OR (p1 = q1 AND p2 < q2) ) AND NOT (p1 = q1 AND p2= q2)
+--
+-- This relation finds interval p that either have a START Relation or a FINISHING Relation
+-- who do not share an EQUALS relation.
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id > @start_slot_id AND a.closing_slot_id = @close_slot_id)
+    OR (a.opening_slot_id = @start_slot_id AND a.closing_slot_id < @close_slot_id)
+    AND NOT(a.opening_slot_id = @start_slot_id AND a.closing_slot_id = @close_slot_id)
+    ORDER BY a.opening_slot_id ASC;
+        
+
+
+
+SHOW profiles;
