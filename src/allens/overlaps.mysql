@@ -1,0 +1,111 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Overlaps Allens Relation
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 5 -- 45minute timeslot
+	ORDER BY opening_slot_id    
+	LIMIT 1 OFFSET 1;
+   
+    
+SET profiling=1;
+
+-- -----------------------------------------------------------------------------
+-- Overlaps Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--  p<------->
+--     q <------------>
+--  
+-- p1 < q1 AND p2 > q1 AND p2 < q2
+--
+-- This relation finds interval p that has one or more clock ticks in common with interval q.
+-- The p interval is the earlier of the two in this relation.
+--
+-- In this relation the p interval that starts BEFORE the q interval 
+-- and finishes DURING interval q thus giving interval p one or more common clock ticks.
+-- 
+
+    SELECT p.timeslot_id,p.opening_slot_id, s1.slot_open,p.closing_slot_id,s2.slot_close
+    FROM timeslot_slots p
+    JOIN slots s1 ON s1.slot_id = p.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = p.closing_slot_id 
+    WHERE p.opening_slot_id < @start_slot_id
+    AND p.closing_slot_id > @start_slot_id
+    AND p.closing_slot_id < @close_slot_id
+    ORDER BY p.opening_slot_id ASC;
+    
+
+/*
+ Result : Considering that our timeslot table is set of continuous slots. There
+          can be no slots that are in the same group that overlap. For the above
+          query we are not limit to same group. 
+          
+          Where looking for a timeslot from another group that starts before the slot q 
+          and finishes during slot q. 
+          
+          We have selected a timeslot from 1:30am-3:00am we expect that
+          we would query two results 1am-2am (1hr group) slot and the 12am-2pm slot (2hr groups).
+          both these slots start before and end during or with our opening slot
+          
+          If we had a 3 hour group from 12am-3am it would NOT be selected. Both slots finish at same time.
+          This would require us to combine finished and overlap relations to obtain saying 
+          that the slot p would start before slot q and finish DURING or WITH slot q.
+*/
+
+
+
+-- -----------------------------------------------------------------------------
+-- Oberlaps By Relation
+-- -----------------------------------------------------------------------------
+--
+--
+--          p<------->
+-- q <------------>
+--  
+-- p1 > q2 AND p1 < q2 AND p2 > q2
+--
+-- This relation finds interval p that has one or more clock ticks in common with interval q.
+-- The q interval is the earlier of the two in this relation.
+--
+-- In this relation the p interval starts AFTER interval q and FINISHES after q.
+-- which gives p one or more clock ticks in common with q
+
+SELECT p.timeslot_id,p.opening_slot_id, s1.slot_open,p.closing_slot_id,s2.slot_close
+    FROM timeslot_slots p
+    JOIN slots s1 ON s1.slot_id = p.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = p.closing_slot_id 
+    WHERE p.opening_slot_id > @start_slot_id
+    AND p.opening_slot_id < @close_slot_id
+    AND p.closing_slot_id > @close_slot_id
+    ORDER BY p.opening_slot_id ASC;
+
+ SHOW profiles;
+ 
+ 
+ /*
+ Result : Considering that our timeslot table is set of continuous slots. There
+          can be no slots that are in the same group that overlap. For the above
+          query we are not limit to same group. 
+          
+          Where looking for a timeslot from another group that starts after the slot q 
+          and finishes after slot q. 
+          
+          We have selected a timeslot from 1:30am-3:00am we expect that
+          we would query only the single result of 2am-4pm (2hr group) slot as this slot starts after (during)
+          the opening slot and finishes after the opening slot's close. 
+*/
