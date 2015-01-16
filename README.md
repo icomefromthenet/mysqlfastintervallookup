@@ -13,8 +13,8 @@ Allens Relations
 1. equals -> allens/equals.mysql
 2. before -> allens/before.mysql
 3. after  -> allens/before.mysql
-4. meets
-5. meets-by
+4. meets  -> allens/meets.mysql 
+5. meets-by -> allens/meets.mysql 
 6. overlaps
 7. overlaps-by
 8. during   -> allens/during.mysql
