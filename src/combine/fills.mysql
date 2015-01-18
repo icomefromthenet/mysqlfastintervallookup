@@ -1,5 +1,5 @@
 -- -----------------------------------------------------------------------------
--- Example of the Occupies Combination (Start,Finishes,During,Equals)
+-- Example of the Fills Combination (Start,Finishes,During,Equals)
 -- -----------------------------------------------------------------------------
 
 -- Setup Queries ignore --------------------------------------------------------
@@ -24,7 +24,7 @@ SET profiling=1;
 
 
 -- -----------------------------------------------------------------------------
--- Align
+-- Fills
 -- -----------------------------------------------------------------------------
 --
 --        Finishes            Starts                During           Equals
@@ -33,16 +33,49 @@ SET profiling=1;
 -- 
 --  (p1 >= q1 AND p2 <= q2)  
 --
--- These find intervals in which one p includes all the clock tickets that are in
--- the interval q but also at least one additional clock tick. 
+-- These find intervals in which p includes all the clock tickets that are in
+-- the interval q.  
 
     SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
     FROM timeslot_slots a
     JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
     JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
     WHERE (a.opening_slot_id >= @start_slot_id AND a.closing_slot_id <= @close_slot_id)
-    AND NOT(a.opening_slot_id = @start_slot_id AND a.closing_slot_id = @close_slot_id)
     ORDER BY a.opening_slot_id ASC;
-    
-    
+
+/*
+*  Result :-   In the query we have selected a slot from the hour group an the query will find all
+*              slots in the other groups that encompase all clock tickets in q slot. 
+               This would restrict query to slot groups with smaller or equal intervals like the half-hour and 15 minute or 1 hours slots. 
+               In other words the slot p must have occured within slot q.
+*/
+
+
+-- -----------------------------------------------------------------------------
+-- Fills-by
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts                During           Equals
+--       p <------->      p <------->              p<----->      p<-------->
+--  q <------------>  OR  q <------------>  OR  q<----------> OR q<-------->
+-- 
+--  (p1 <= q1 AND p2 >= q2)  
+--
+-- These find intervals in which q includes all the clock tickets that are in
+-- the interval p.  
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id <= @start_slot_id AND a.closing_slot_id >= @close_slot_id)
+    ORDER BY a.opening_slot_id ASC;
+
+/*
+*  Result :-   In the query we have selected a slot from the hour group an the query will find all
+*              slots in the other groups that encompase all clock tickets in q slot. 
+               This would restrict query to slot groups with larger or equal intervals like the hour-half or 2 hour or 1 hours slots. 
+               In other words the slot q must have occured within slot p.
+*/
+
 SHOW profiles;

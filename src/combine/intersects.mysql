@@ -1,0 +1,71 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Intersects Combination (Start,Finishes.During,Equals,Overlaps)
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+   
+    
+SET profiling=1;
+
+
+-- -----------------------------------------------------------------------------
+-- Intersects
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts                During           Equals          Overlaps
+--       p <------->      p <------->              p<----->      p<-------->      p <--->
+--  q <------------>  OR  q <------------>  OR  q<----------> OR q<-------->  OR  q   <------->
+-- 
+--  (p1 <= q1 AND p2 > q1) 
+--
+-- This find intervals p that start no later than start of q and ends after the start of q interval, in that interval p
+-- would be the earlier or (equal) of the two intervals.
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id <= @start_slot_id AND a.closing_slot_id > @start_slot_id)
+    ORDER BY a.opening_slot_id ASC
+    LIMIT 20;
+        
+
+
+-- -----------------------------------------------------------------------------
+-- Intersects-by
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts                During           Equals          Overlaps
+--       p <------->      p <------->              p<----->      p<-------->      p       <---->
+--  q <------------>  OR  q <------------>  OR  q<----------> OR q<-------->  OR  q <------->
+-- 
+--  (p1 < q2 AND p2 > q1)
+--
+-- This find intervals p starts no later than interval q and ends after the q interval starts.
+-- where q would be the short or equal of the two intervals
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id < @close_slot_id AND a.closing_slot_id > @start_slot_id)
+    ORDER BY a.opening_slot_id ASC
+    LIMIT 20;
+
+
+SHOW profiles;
