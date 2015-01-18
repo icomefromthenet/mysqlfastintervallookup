@@ -1,0 +1,48 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Occupies Combination (Start,Finishes,During,Equals)
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+   
+    
+SET profiling=1;
+
+
+-- -----------------------------------------------------------------------------
+-- Align
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts                During           Equals
+--       p <------->      p <------->              p<----->      p<-------->
+--  q <------------>  OR  q <------------>  OR  q<----------> OR q<-------->
+-- 
+--  (p1 >= q1 AND p2 <= q2)  
+--
+-- These find intervals in which one p includes all the clock tickets that are in
+-- the interval q but also at least one additional clock tick. 
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id >= @start_slot_id AND a.closing_slot_id <= @close_slot_id)
+    AND NOT(a.opening_slot_id = @start_slot_id AND a.closing_slot_id = @close_slot_id)
+    ORDER BY a.opening_slot_id ASC;
+    
+    
+SHOW profiles;

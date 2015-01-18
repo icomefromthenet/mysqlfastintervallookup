@@ -1,0 +1,83 @@
+-- -----------------------------------------------------------------------------
+-- Example of the Occupies Combination (Start,Finishes,During)
+-- -----------------------------------------------------------------------------
+
+-- Setup Queries ignore --------------------------------------------------------
+
+    SELECT open_slot_id, close_slot_id  
+    INTO @start_ofday, @close_ofday
+    FROM calendar 
+    WHERE y = (select max(y)-1 from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
+
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @start_slot_id, @close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @close_ofday 
+    AND closing_slot_id  > @start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
+   
+    
+SET profiling=1;
+
+
+-- -----------------------------------------------------------------------------
+-- Align
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts                During        
+--       p <------->      p <------->              p<----->     
+--  q <------------>  OR  q <------------>  OR  q<---------->  
+-- 
+--  (p1 >= q2 AND p2 <= q2)  AND NOT (p1 =q1 AND p2 = q2)
+--
+-- This find intervals p for which share all clock ticks in an interval q and where
+-- there is at least one extra clock tick in q interval not in the p interval.
+--  
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id >= @start_slot_id AND a.closing_slot_id <= @close_slot_id)
+    AND NOT(a.opening_slot_id = @start_slot_id AND a.closing_slot_id = @close_slot_id)
+    ORDER BY a.opening_slot_id ASC;
+
+/*
+*  Result :-   In the query we have selected a slot from the hour group an the query will find all
+*              slots in the other groups that share clock ticks between the start and finish of
+*              the hour q slot. But not those that are equal (i.e. itself).
+*/
+
+-- -----------------------------------------------------------------------------
+-- Align-By
+-- -----------------------------------------------------------------------------
+--
+--        Finishes            Starts                During        
+--       p <------->      p <------->              p<----->     
+--  q <------------>  OR  q <------------>  OR  q<---------->  
+-- 
+--  (p1 <= q2 AND p2 >= q2)  AND NOT (p1 =q1 AND p2 = q2)
+--
+-- This find intervals p for which share all clock ticks in an interval q and where
+-- there is at least one extra clock tick in p interval not in the q interval.
+
+    SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+    FROM timeslot_slots a
+    JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+    JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+    WHERE (a.opening_slot_id <= @start_slot_id AND a.closing_slot_id >= @close_slot_id)
+    AND NOT(a.opening_slot_id = @start_slot_id AND a.closing_slot_id = @close_slot_id)
+    ORDER BY a.opening_slot_id ASC;
+    
+/*
+*  Result :-   In the query we have selected a slot from the hour group an the query will find all
+*              slots in the other groups encompase all clock tickets in q slot. But not those that are equal (i.e. itself).
+               This would restrict query to slot groups with larger intervals like the hour-half and 2 hours slots. 
+               In other words the slot q must have occured within slot p.
+*/
+
+
+SHOW profiles;
