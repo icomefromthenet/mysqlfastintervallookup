@@ -27,6 +27,11 @@ Allens Relations
 Combinaions
 ==============
  
+ 1. Aligns     -> allens/aligns.mysql
+ 2. Excludes   -> allens/excludes.mysql
+ 3. Fills      -> allens/fills.mysql
+ 4. Intersects -> allens/intersects.mysql
+ 5. occupies -> allens/occupies.mysql
 
 
 The closed:open interval format
