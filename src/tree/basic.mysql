@@ -1,21 +1,9 @@
-SELECT open_slot_id, (close_slot_id  +1)
+SELECT open_slot_id, close_slot_id
 INTO @minslot, @maxslot
 FROM calendar 
 WHERE y = (select max(y)-1 from calendar) 
 AND w   = 4 
 AND dw  = 1;
-
-/*
-* Be aware of interval formats.
-* 
-* The slots table does not store the intervals as closed-open format its using closed-closed
-* format.
-*
-* Above when I selected a day I made sure to convert the interval format by adding
-* 1 slot value to the closing slot. this means that given 2 intervals p and q  that p2 =q1.
-* 
-*/
-
 
 SET profiling=1;
 

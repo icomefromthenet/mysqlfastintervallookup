@@ -57,9 +57,11 @@ RI Tree
 ===================================== 
 
 The Relation Interval Tree is an adaption of and Interval Tree structure into
-a relational context. 
+a relational context. The algorithm was outlined out in a paper called [Managing Intervals Efficiently in Object-Relational Databases](http://www.dbs.ifi.lmu.de/Publikationen/Papers/VLDB2000.pdf).
 
-I have implement a simple version with fixed height tree.
+I have implement their fixed height tree to speed up my intersection queries.
+
+
 
 The table `timeslot_slots_tree` tree has been modifed to support the RITree. It is
 based on the original `timeslot_slots` table.
@@ -71,7 +73,7 @@ Using a low teir VPS hosted with Linode, running both queries to find intersecti
 within a particular calendar day.
 
 Duration(sec):
-Normal       : 0.076909
+Normal       : 0.07690900
 RITree       : 0.00163325
 
 The RITree was able to significantly speed up the intersects query. 
