@@ -12,11 +12,10 @@ DROP PROCEDURE IF EXISTS `bm_rules_timeslot_left_nodes`$$
 CREATE PROCEDURE `bm_rules_timeslot_left_nodes`(lower INT, upper INT)
 BEGIN
 
-  	DECLARE treeHeight INT DEFAULT 0;
+  DECLARE treeHeight INT DEFAULT 0;
 	DECLARE treeRoot INT DEFAULT 0; 
 	DECLARE treeNode INT DEFAULT 0; 
 	DECLARE searchStep INT DEFAULT 0;
-	DECLARE tmpTable VARCHAR(30)  DEFAULT 'timeslot_left_nodes_result';
 	
 	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
 	SET treeRoot    = power(2,(treeHeight-1)); 
@@ -58,11 +57,10 @@ DROP PROCEDURE IF EXISTS `bm_rules_timeslot_right_nodes`$$
 CREATE PROCEDURE `bm_rules_timeslot_right_nodes`(lower INT, upper INT)
 BEGIN
 
-  	DECLARE treeHeight INT DEFAULT 0;
+  DECLARE treeHeight INT DEFAULT 0;
 	DECLARE treeRoot INT DEFAULT 0; 
 	DECLARE treeNode INT DEFAULT 0; 
 	DECLARE searchStep INT DEFAULT 0;
-	DECLARE tmpTable VARCHAR(30)  DEFAULT 'timeslot_left_nodes_result';
 	
 	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
 	SET treeRoot    = power(2,(treeHeight-1)); 

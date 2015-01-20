@@ -1,0 +1,22 @@
+SELECT open_slot_id, close_slot_id  
+INTO @minslot, @maxslot
+FROM calendar 
+WHERE y = (select max(y)-1 from calendar) 
+AND w   = 4 
+AND dw  = 1;
+
+
+SET profiling=1;
+
+-- 4237921
+-- 4239361
+
+-- This is an example of the intersect combination which (Start,Finishes.During,Equals,Overlaps) Allens relations
+select count(*)
+from timeslot_slots i 
+where i.opening_slot_id <= @maxslot  AND i.closing_slot_id >  @minslot
+AND i.timeslot_id = 1
+order by i.opening_slot_id;
+
+
+SHOW profiles;
