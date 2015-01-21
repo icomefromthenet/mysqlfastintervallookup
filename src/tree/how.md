@@ -9,8 +9,8 @@ I have implement their fixed height tree to speed up my intersection queries.
 Part A - The Fork Node
 --------------------------------------
 
-The RI Tree uses a virtual heirarchy that is stored with each interval and know as the fork node.
-Foreach update and insert the value of the fork node must be calculated. 
+The RI Tree uses a virtual heirarchy that is stored along with each interval and is know as the fork node.
+For every update and insert the fork node must be calculated and included. 
 
 I impelement the following function to calculate the fork node.
 
@@ -44,19 +44,21 @@ BEGIN
 END;
 $$
 ```
-As I mentioned earlier I impelement a fixed height tree, using the max size of the slots table. As this table is built during the install I know the size will
-remain fixed. I use a query to fetch the size, as I vary the number of calendar years that the table contains during testing.
+I am using the max slot_id of the slots table as my root node and as this table is built during the install I know the size will
+remain fixed. In the function I used a query to fetch the max value as I vary the number of calendar years that are genereted during the install while running tests.
 
 Key points to take away from forkNode. 
 
-1. Root is always set to max tree height, highe the tree the more recursion will occur in the loop.
+1. Root is always set to max tree height and the higher the tree the greater the number of loop iterations.
 2. Use bisection to iteratre of the tree (divide by 2). 
-3. This does not use and I/O.
-4. If we change the hight of the tree we need to change every forkNode.
+3. This does not use any disk I/O but recursion does chew cpu cycles.
+4. If we change the height of the tree we need to update every forkNode on the table.
 
 
 Part B - The Schema and indexes
 --------------------------------------
+
+We need a column to store the forkNode and indexes that speed up the searches.
 
 To the base table we need to add the following:
 
@@ -71,9 +73,8 @@ To the base table we need to add the following:
 
 ```
 
-We need a column to store the forkNode and indexes that speed up the searches.
 
-If this table did not use a second form of grouping we would only use indexes like
+If this table did not use a second form of grouping we would only use indexes like:
 
 ```mysql
     -- RI Indexes
@@ -82,21 +83,18 @@ If this table did not use a second form of grouping we would only use indexes li
 ```
 
 As this table is split into timeslot groups and my queries are only interested in
-timeslots that are part of the same group. The `timeslot_id` must be added as the first
+timeslots that are part of the same group the `timeslot_id` must be added as the first
 index. 
 
-Our later query will use the firts two `timeslot_id` and `node` as partial index if the `opening_slot_id` precedes our group the index could not be used and this would slow the query down. 
-Always add extra groups to the left for RI Tree specific indexes.
+Our later query will use the first two columns `timeslot_id` and `node` as partial index but if the `opening_slot_id` precedes our group column the query optimizer will not use our index. It is important to add extra group columns to the left on the RI Tree indexes.
 
 
 Part C - Left and right nodes
 --------------------------------------
-To query an intersection we need three result sets, The values on the left the values on the right and the values in between.
+To query an intersection we need three result sets the first set is the values on the left of forkNode the second is values on the right of the forkNode and the last set is the forkNodes between the upper and lower bounds of the interval.
 
-These functions use integer math to find Nodes that are either on the left or right by traversing the tree in memory.
-As the tree is fixed height we have the root and can avoid I/O while traversing.
-
-However when a node is found it needs to be recorded and as MYSQL can not return a result to a query the values need to be stored in a temp table. 
+These procedures use a loop to decent the tree heirarchy to find forkNodes that are either on the left or right avoiding I/O while traversing.
+However when a node is found it needs to be recorded and since MYSQL procedures can not return result sets the values are stored in a temp table and as the table is using the memory engine, we avoid disk I/O.  
 
 ```mysql
 
@@ -192,7 +190,7 @@ $$
 Key points to take away.
 
 1. The procedures do not require I/O to traverse the tree and using memory temp tables stops disk I/O when storing the result.
-2. Use fixed root and bisection to traverse the tree. If the height changed we need to ensure these procedures know.
+2. Uses fixed root and bisection to traverse the tree.
 3. These temp tables are globals.
 
 
@@ -233,14 +231,12 @@ We have three parts to intersections query
 
 ```
 
-I had to specify the indexes as the optimizer could not produce a stable plan for first query.
-An index is used for each query making the overall result must faster than normal interval query
-that requires a full table scan. 
+As the optimizer could not produce a stable execution plan I had to specify the indexes to be used but it is these index that make the overall result faster so it is important that they are used in the correct order. 
 
 
 Parts E - Observation
 --------------------------------------
-Using the tests in [basic.mysql](basic.mysql) and [normal.mysql](normal.mysql) as a comparision to normal interval query I found that I was able to achieve a large reduction in query time.
+Using the tests in [basic.mysql](basic.mysql) and [normal.mysql](normal.mysql) as a comparision interval query I found that I was able to achieve a large reduction in query time.
 
 Duration(sec):
 Normal       : 0.07690900
