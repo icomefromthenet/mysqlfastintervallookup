@@ -132,6 +132,21 @@ BEGIN
     -- this would cause a FK key constrain we stop at the last slot in the table. 
     WHERE `a`.`slot_id` < (select max(`b`.`slot_id`) FROM `slots` b)
 	GROUP BY ceil(`a`.`slot_id`/timeslotLength);
+	
+	-- This table uses RI Tree so needs to call utl_fork_node to calculate the node column. 
+    -- This in effect creats a virtual tree structure.
+    
+    INSERT INTO timeslot_slots_tree_adv (timeslot_slot_id,opening_slot_id,closing_slot_id,timeslot_id,node)  
+	SELECT NULL
+          ,min(`a`.`slot_id`) as slot_open_id	
+          ,max(`a`.`slot_id`) +1 as slot_close_id 
+          ,timeslotID
+          ,utl_fork_node(min(`a`.`slot_id`),max(`a`.`slot_id`))
+    FROM `slots` a
+    -- as where using closed:open we can not use the last row in slot table
+    -- this would cause a FK key constrain we stop at the last slot in the table. 
+    WHERE `a`.`slot_id` < (select max(`b`.`slot_id`) FROM `slots` b)
+	GROUP BY ceil(`a`.`slot_id`/timeslotLength);
 		
 	IF @bm_debug = true THEN
 		CALL util_proc_log(concat('For timeslot at:: ',timeslotID,' Inserted ',ROW_COUNT(),' into timeslot_slots'));

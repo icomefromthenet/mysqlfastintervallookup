@@ -44,14 +44,22 @@ BEGIN
 END;
 $$
 ```
-I am using the max slot_id of the slots table as my root node and as this table is built during the install I know the size will
-remain fixed. In the function I used a query to fetch the max value as I vary the number of calendar years that are genereted during the install while running tests.
+I am using the max slot_id of the slots table to determine the height of my tree and as this table is built during the install I know the size will
+remain fixed. 
+
+```mysql
+SET treeHeight  = ceil(LOG2((SELECT MAX(slot_id) FROM slots)+1));
+```
+
+After generating slots for 10 calender ears the result of line above produces a height of 24 If you are unsure of the final height of the tree you can make the assume  max integer and height value of 32 would cover a majority of usecases. 
+
+In the function I used a query to fetch the max value as I vary the number of calendar years that are genereted during the install while running tests.
 
 Key points to take away from forkNode. 
 
 1. Root is always set to max tree height and the higher the tree the greater the number of loop iterations.
-2. Use bisection to iteratre of the tree (divide by 2). 
-3. This does not use any disk I/O but recursion does chew cpu cycles.
+2. Use bisection to iteratre down the tree (divide by 2). 
+3. This does not use any disk I/O but recursion will require cpu cycles.
 4. If we change the height of the tree we need to update every forkNode on the table.
 
 
@@ -91,10 +99,13 @@ Our later query will use the first two columns `timeslot_id` and `node` as parti
 
 Part C - Left and right nodes
 --------------------------------------
-To query an intersection we need three result sets the first set is the values on the left of forkNode the second is values on the right of the forkNode and the last set is the forkNodes between the upper and lower bounds of the interval.
+To query an intersection we need three result sets.
 
-These procedures use a loop to decent the tree heirarchy to find forkNodes that are either on the left or right avoiding I/O while traversing.
-However when a node is found it needs to be recorded and since MYSQL procedures can not return result sets the values are stored in a temp table and as the table is using the memory engine, we avoid disk I/O.  
+1. The first set is the values on the left which are guaranteed to overlap with the lower bound that searhing for.Part A - The Fork Node
+2. The second is values on the right which are guaranteed to overlap with the upperbound 
+3. The last set inner query is not materialized by a procedure. It will find all intervals between the upper and lower bounds of the search.
+
+These procedures use a loop to decend the tree using arithmetic without any I/O operations and when a node is found it is collected in a memory table however since MYSQL procedures can not return inline results the values are instead stored in a temp table using the memory engine to avoid disk I/O.  
 
 ```mysql
 
@@ -190,9 +201,9 @@ $$
 Key points to take away.
 
 1. The procedures do not require I/O to traverse the tree and using memory temp tables stops disk I/O when storing the result.
-2. Uses fixed root and bisection to traverse the tree.
+2. Uses fixed root and bisection to traverse the binary tree.
 3. These temp tables are globals.
-
+4. These must be called before the intersect query is executed.
 
 Parts D - Basic Query
 --------------------------------------
@@ -200,7 +211,7 @@ Parts D - Basic Query
 We have three parts to intersections query
 
 1. Call the right and left nodes procedures to ensure the tmp tables are populated.
-2. Execute three select queries and combine the results.
+2. Execute three select queries (leftQuery,rightQuery,innerQuery) and combine the results.
 
 ```mysql
 
@@ -208,7 +219,7 @@ We have three parts to intersections query
     CALL bm_rules_timeslot_right_nodes(@minslot,@maxslot);
 
 
-
+    -- leftQuery
     SELECT i.*
     FROM timeslot_slots_tree i USE INDEX (`idx_timeslot_slots_tree_ri_upper`)
     JOIN timeslot_left_nodes_result l ON i.node = l.node
@@ -217,12 +228,14 @@ We have three parts to intersections query
     -- if we used '>=' operator we would match nodes that qualify as 'meet' allens relation which we don't want.
     AND i.closing_slot_id > @minslot
     UNION ALL
+    -- rightQuery
     SELECT i.*
     FROM timeslot_slots_tree i USE INDEX (`idx_timeslot_slots_tree_ri_lower`)
     JOIN timeslot_right_nodes_result l ON i.node = l.node
     AND i.timeslot_id = 1
     AND i.opening_slot_id <= @maxslot
     UNION ALL 
+    -- InnerQuery
     SELECT i.*
     FROM timeslot_slots_tree i
     WHERE node BETWEEN @minslot AND @maxslot
@@ -230,6 +243,8 @@ We have three parts to intersections query
     
 
 ```
+
+The leftQuery is different to example found in the paper, my version assumes a closed-open interval relation.
 
 As the optimizer could not produce a stable execution plan I had to specify the indexes to be used but it is these index that make the overall result faster so it is important that they are used in the correct order. 
 
@@ -241,5 +256,82 @@ Using the tests in [basic.mysql](basic.mysql) and [normal.mysql](normal.mysql) a
 Duration(sec):
 Normal       : 0.07690900
 RITree       : 0.00163325
+
+
+Part F - Advanced Interval Queries
+--------------------------------------------
+
+The authors of the original paper wrote a second paper called "Object-Relational Indexing for GeneralInterval Relationships", and shows how the RI-Tree can be extended to handle the 13 general interval relationships defined by Allen. 
+
+###12 Classes of Nodes
+
+1. topLeft - before,meets,overlaps,finished-by, includes.
+2. bottomLeft - before, meets,overlaps.
+3. innerLeft - overlaps, starts, during.
+4. topRight - includes, started-by, overlaps-By, meets-by, after.
+5. bottomRight - overlapped-by, meets-by , after.
+6. innerRight - during, finishes, overlaps-by.
+7. lower - meets, overlaps, starts.
+8. fork - overlaps, finishes-by, includes,starts,equals,finishes,during,started-by,overlapped-by.
+9. upper - finishes, meets-by, overlapps-by.
+10. allLeft - before.
+11. allInner - during.
+12. allRight - after.
+
+
+### Interval Relationships and affected node classes
+
+1. before - allLeft (includes topLeft and bottomLeft)
+2. meets - topLeft, bottomLeft,lower
+3. overlaps - topLeft,bottomLeft,innerLeft,lower,fork
+4. finished-by - topLeft, fork
+5. starts - innerLeft, lower, fork
+6. includes - topLeft,fork,topRight
+7. equals - fork
+8. during - allInner (inclusing innerLeft,fork,innerRight)
+9. started-by - topRight,fork
+10. finishes - innerRight,upper,fork
+11. overlapped-by topRight, bottomRight,innerRight,upper,fork
+12. meets-by - topRight bottomRight, upper
+13.  after - allRight (includes topRight and bottomRight)
+
+
+### traversal classes, singleton and range classes.
+
+The node classes are grouped into three categories
+
+#### Traversal Classes
+1. topLeft
+2. bottomLeft
+3. innerLeft
+4. topRight
+5. bottomRight
+6. innerRight
+
+
+These traversal classes need to be materialized with a procedure before they can be
+queried as with basic version left nodes and right nodes the binary tree is traversed and
+intersection nodes are gathered into tmp tables.
+
+
+### Singleton Classes
+1. fork
+2. upper
+3. lower
+ 
+These classes are not meterialized though fork must be calculated with exixting forkNode function before 
+we can use the value in a query. Queries with these classes are compared using equality match ('=') only
+compare against a single value ie singleton.
+
+### Range Classes
+1. allLeft  (includes topLeft and bottomLeft)
+2. allInner (inclusing innerLeft,fork,innerRight)
+3. allRight (includes topRight and bottomRight)
+
+These utilise unions of traversal classes and are comparied using a range comparison ('<','>') operators.
+ 
+1. allLeft:  `node < lower`
+2. allInner: `node < lower AND node < upper`
+3. allright: `node > upper`
 
 

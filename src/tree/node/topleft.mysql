@@ -1,0 +1,23 @@
+SELECT open_slot_id, close_slot_id
+INTO @minslot, @maxslot
+FROM calendar 
+WHERE y = (select max(y)-1 from calendar) 
+AND w   = 4 
+AND dw  = 1;
+
+SET profiling=1;
+
+--  ----------------------------------------------------------------------------
+--  Test toLeft Node generator procedure
+-- -----------------------------------------------------------------------------
+
+CALL bm_rules_timeslot_nodes_top_left(@minslot,@maxslot);
+
+
+
+
+SELECT * FROM  timeslot_nodes_top_left;
+
+SHOW profiles;
+
+

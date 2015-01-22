@@ -95,3 +95,48 @@ BEGIN
 
 END;
 $$
+
+
+DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_top_left`$$
+
+CREATE PROCEDURE `bm_rules_timeslot_nodes_top_left`(lower INT, upper INT)
+BEGIN
+    
+    DECLARE treeHeight INT DEFAULT 0;
+  	DECLARE treeRoot INT DEFAULT 0; 
+  	DECLARE treeNode INT DEFAULT 0; 
+  	DECLARE searchStep INT DEFAULT 0;
+	
+  	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
+  	SET treeRoot    = power(2,(treeHeight-1)); 
+  	SET treeNode    = treeRoot;
+  	SET searchStep  =  treeNode / 2;
+
+    -- holds a colletion of forkNodes 
+   	DROP TEMPORARY TABLE IF EXISTS `timeslot_nodes_top_left`;
+    CREATE TEMPORARY TABLE `timeslot_nodes_top_left` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
+    
+    -- Descend from the root node to the fork node
+    
+    myloop:WHILE searchStep >= 1 DO
+      
+      IF treeNode < lower THEN
+        -- this is in topLeft class if forkNode occurs before the lower bound.
+        -- means this interval could intersect the search interval or could not
+        -- at the lower bound.
+         INSERT INTO timeslot_nodes_top_left (`node`) VALUES (treeNode);
+         SET treeNode = treeNode + searchStep;
+      ELSEIF upper < treeNode THEN
+        -- above the forkNode keep going down  
+        SET treeNode = treeNode - searchStep;
+      ELSE 
+        -- fork node
+        LEAVE myloop;
+      END IF;
+    
+      SET searchStep = searchStep / 2;
+    
+    END WHILE myloop;
+
+END;
+$$
