@@ -1,0 +1,6 @@
+SET @minslot := 4237921;
+SET @maxslot := 4239361;
+--  ----------------------------------------------------------------------------
+--  Test of the meets Allens relation
+-- -----------------------------------------------------------------------------
+SELECT a.booking_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close FROM bookings_adv a JOIN slots s1 ON s1.slot_id = a.opening_slot_id JOIN slots s2 ON s2.slot_id = a.closing_slot_id WHERE a.closing_slot_id = @minslot ORDER BY a.booking_id DESC LIMIT 10;

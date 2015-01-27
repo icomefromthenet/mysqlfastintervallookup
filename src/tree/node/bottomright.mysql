@@ -8,13 +8,13 @@ AND dw  = 1;
 SET profiling=1;
 
 --  ----------------------------------------------------------------------------
---  Test topLeft Node generator procedure
+--  Test bottomRight Node generator procedure
 -- -----------------------------------------------------------------------------
 
-CALL bm_rules_timeslot_nodes_top_left(@minslot,@maxslot);
+CALL bm_rules_timeslot_nodes_bottom_right(@minslot,@maxslot);
 
 
-SELECT * FROM  timeslot_nodes_top_left;
+SELECT * FROM  timeslot_nodes_bottom_right;
 
 SHOW profiles;
 

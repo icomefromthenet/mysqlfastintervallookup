@@ -62,6 +62,26 @@ BEGIN
 	CLOSE timeslots_cursor;
 	SET l_last_row_fetched=0;
 
+
+	-- This table uses RI Tree so needs to call utl_fork_node to calculate the node column. 
+    -- This in effect creats a virtual tree structure.
+    -- Where limiting the max number of possible bookings from max number is slot table
+    -- In a production system we prob use the (INT max)
+  	SELECT min(slot_id) INTO @low FROM slots;
+	SELECT max(slot_id) INTO @high FROM slots;
+	
+  	INSERT INTO bookings_adv (booking_id,opening_slot_id,closing_slot_id,node)
+	SELECT NULL,(@low + FLOOR(RAND() * (@high-@low))), 1 ,1
+	FROM slots a
+	WHERE slot_id < 20001;
+	
+	-- add one to ensure where using closed-open interval format
+	UPDATE bookings_adv set closing_slot_id = (opening_slot_id + FLOOR(RAND() * (@high-opening_slot_id))) +1
+	WHERE 1=1;
+	
+	UPDATE bookings_adv set node = utl_fork_node(opening_slot_id,closing_slot_id)
+	WHERE 1=1;
+	
 	
     -- execute debug log cleanup
     IF @bm_debug = true THEN

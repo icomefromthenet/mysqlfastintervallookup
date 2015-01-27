@@ -37,7 +37,7 @@ BEGIN
     -- left node
     ELSEIF lower > treeNode THEN
   
-      INSERT INTO `timeslot_left_nodes_result`(node) VALUES(treeNode);
+      INSERT INTO `timeslot_left_nodes_result` (`node`) VALUES(treeNode);
       SET treeNode = treeNode + searchStep;
   
     -- lower
@@ -96,6 +96,14 @@ BEGIN
 END;
 $$
 
+-- -----------------------------------------------------
+-- Advanced RI Tree Node Traversal procedures
+-- -----------------------------------------------------
+
+
+
+-- Left Node Methods
+
 
 DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_top_left`$$
 
@@ -117,18 +125,198 @@ BEGIN
     CREATE TEMPORARY TABLE `timeslot_nodes_top_left` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
     
     -- Descend from the root node to the fork node
-    
+    -- all forkNodes that occur before the lower bound of search interval 
     myloop:WHILE searchStep >= 1 DO
       
       IF treeNode < lower THEN
-        -- this is in topLeft class if forkNode occurs before the lower bound.
-        -- means this interval could intersect the search interval or could not
-        -- at the lower bound.
          INSERT INTO timeslot_nodes_top_left (`node`) VALUES (treeNode);
          SET treeNode = treeNode + searchStep;
+         
       ELSEIF upper < treeNode THEN
         -- above the forkNode keep going down  
         SET treeNode = treeNode - searchStep;
+        
+      ELSE 
+        LEAVE myloop;
+        -- fork node
+        
+      END IF;
+    
+      SET searchStep = searchStep / 2;
+    
+    END WHILE myloop;
+
+END;
+$$
+
+
+
+
+DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_inner_left`$$
+CREATE PROCEDURE `bm_rules_timeslot_nodes_inner_left`(lower INT, upper INT)
+BEGIN
+    
+    DECLARE treeHeight INT DEFAULT 0;
+  	DECLARE treeRoot INT DEFAULT 0; 
+  	DECLARE treeNode INT DEFAULT 0; 
+  	DECLARE searchStep INT DEFAULT 0;
+	  DECLARE fork INT DEFAULT 0;
+	  DECLARE step2 INT DEFAULT 0;
+	
+  	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
+  	SET treeRoot    = power(2,(treeHeight-1)); 
+  	SET treeNode    = treeRoot;
+  	SET searchStep  = treeNode / 2;
+
+    -- holds a colletion of forkNodes 
+   	DROP TEMPORARY TABLE IF EXISTS `timeslot_nodes_inner_left`;
+    CREATE TEMPORARY TABLE `timeslot_nodes_inner_left` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
+    
+    -- Descend from the root node to the fork node
+    
+    loopRF:WHILE searchStep >= 1 DO
+      
+      IF upper < treeNode THEN SET treeNode = treeNode - searchStep;
+      ELSEIF treeNode < lower THEN SET treeNode = treeNode + searchStep;
+      ELSE  SET fork = treeNode; LEAVE loopRF;
+      END IF;
+    
+      SET searchStep = searchStep / 2;
+    
+    END WHILE loopRF;
+    
+    
+    -- Descend from the fork node to lower
+    IF lower < fork THEN
+    
+      SET treeNode = fork - searchStep;
+      SET step2    = searchStep / 2;
+      
+    -- Nodes lower in tree than forkNode of search interval that occur
+    -- before the forkNode of the search interval 
+    
+    loopFL:WHILE step2 >=1  DO
+    
+      IF treeNode < lower THEN
+        SET treeNode = treeNode + step2;
+      
+      ELSEIF lower < treeNode THEN
+        INSERT INTO `timeslot_nodes_inner_left` (`node`) VALUES (treeNode);
+        SET treeNode = treeNode - step2;
+        
+      ELSE
+        LEAVE loopFL;
+        
+      END IF;
+      
+      SET step2 = step2 / 2;
+    
+    END WHILE loopFL;
+
+    END IF;
+
+END;
+$$
+
+
+DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_bottom_left`$$
+CREATE PROCEDURE `bm_rules_timeslot_nodes_bottom_left`(lower INT, upper INT)
+BEGIN
+    
+    DECLARE treeHeight INT DEFAULT 0;
+  	DECLARE treeRoot INT DEFAULT 0; 
+  	DECLARE treeNode INT DEFAULT 0; 
+  	DECLARE searchStep INT DEFAULT 0;
+	  DECLARE fork INT DEFAULT 0;
+	  DECLARE step2 INT DEFAULT 0;
+	
+  	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
+  	SET treeRoot    = power(2,(treeHeight-1)); 
+  	SET treeNode    = treeRoot;
+  	SET searchStep  = treeNode / 2;
+
+    -- holds a colletion of forkNodes 
+   	DROP TEMPORARY TABLE IF EXISTS `timeslot_nodes_bottom_left`;
+    CREATE TEMPORARY TABLE `timeslot_nodes_bottom_left` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
+    
+    -- Descend from the root node to the fork node
+    
+    loopRF:WHILE searchStep >= 1 DO
+      
+      IF treeNode < lower THEN SET treeNode = treeNode + searchStep;
+      ELSEIF upper < treeNode THEN SET treeNode = treeNode - searchStep;
+      ELSE SET fork = treeNode; LEAVE loopRF;
+      END IF;
+    
+      SET searchStep = searchStep / 2;
+    
+    END WHILE loopRF;
+    
+    
+    -- Descend from the fork node to lower
+    IF upper > fork THEN
+    
+      SET treeNode = fork - searchStep;
+      SET step2    = searchStep / 2;
+    
+    -- Nodes lower in tree than forkNode search interval that before after
+    -- the lower bound of the search interval
+    loopFU:WHILE step2 >=1  DO
+      
+      IF treeNode < lower THEN
+        INSERT INTO `timeslot_nodes_bottom_left` (`node`) VALUES (treeNode);
+        SET treeNode = treeNode + step2;
+      
+      ELSEIF lower < treeNode THEN
+        SET treeNode = treeNode - step2;
+        
+      ELSE
+        LEAVE loopFU;
+        -- reached lower node  
+      END IF;
+      
+      SET step2 = step2 / 2;
+    
+    END WHILE loopFU;
+
+    END IF;
+
+END;
+$$
+
+
+-- Right Node Methods
+
+DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_top_right`$$
+CREATE PROCEDURE `bm_rules_timeslot_nodes_top_right`(lower INT, upper INT)
+BEGIN
+    
+    DECLARE treeHeight INT DEFAULT 0;
+  	DECLARE treeRoot INT DEFAULT 0; 
+  	DECLARE treeNode INT DEFAULT 0; 
+  	DECLARE searchStep INT DEFAULT 0;
+	
+  	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
+  	SET treeRoot    = power(2,(treeHeight-1)); 
+  	SET treeNode    = treeRoot;
+  	SET searchStep  =  treeNode / 2;
+
+    -- holds a colletion of forkNodes 
+   	DROP TEMPORARY TABLE IF EXISTS `timeslot_nodes_top_right`;
+    CREATE TEMPORARY TABLE `timeslot_nodes_top_right` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
+    
+    -- Descend from the root node to the fork node
+    
+    -- forkNodes that occur after the upper bound of the search interval 
+    myloop:WHILE searchStep >= 1 DO
+      
+      IF treeNode < lower THEN
+         SET treeNode = treeNode + searchStep;
+         
+      ELSEIF upper < treeNode THEN
+        INSERT INTO timeslot_nodes_top_right (`node`) VALUES (treeNode);
+        SET treeNode = treeNode - searchStep;
+        
       ELSE 
         -- fork node
         LEAVE myloop;
@@ -140,3 +328,138 @@ BEGIN
 
 END;
 $$
+
+
+DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_inner_right`$$
+CREATE PROCEDURE `bm_rules_timeslot_nodes_inner_right`(lower INT, upper INT)
+BEGIN
+    
+    DECLARE treeHeight INT DEFAULT 0;
+  	DECLARE treeRoot INT DEFAULT 0; 
+  	DECLARE treeNode INT DEFAULT 0; 
+  	DECLARE searchStep INT DEFAULT 0;
+	  DECLARE fork INT DEFAULT 0;
+	  DECLARE step2 INT DEFAULT 0;
+	
+  	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
+  	SET treeRoot    = power(2,(treeHeight-1)); 
+  	SET treeNode    = treeRoot;
+  	SET searchStep  = treeNode / 2;
+
+    -- holds a colletion of forkNodes 
+   	DROP TEMPORARY TABLE IF EXISTS `timeslot_nodes_inner_right`;
+    CREATE TEMPORARY TABLE `timeslot_nodes_inner_right` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
+    
+    -- Descend from the root node to the fork node
+    
+    loopRF:WHILE searchStep >= 1 DO
+      
+      IF treeNode < lower THEN SET treeNode = treeNode + searchStep;
+      ELSEIF upper < treeNode THEN SET treeNode = treeNode - searchStep;
+      ELSE SET fork = treeNode; LEAVE loopRF;
+      END IF;
+    
+      SET searchStep = searchStep / 2;
+    
+    END WHILE loopRF;
+    
+    
+    -- Descend from the fork node to upper
+    IF upper > fork THEN
+    
+      SET treeNode = fork + searchStep;
+      SET step2    = searchStep / 2;
+
+    -- Node that occur lower in tree than the forkNode and occur before the
+    -- upper bound of the search interval
+    
+    loopFU:WHILE step2 >=1  DO
+    
+      IF treeNode < upper THEN
+        SET treeNode = treeNode + step2;
+        INSERT INTO `timeslot_nodes_inner_right` (`node`) VALUES (treeNode);
+      
+      ELSEIF upper < treeNode THEN
+        SET treeNode = treeNode - step2;
+  
+      ELSE
+        LEAVE loopFU;
+        -- reached upper node
+      END IF;
+      
+      SET step2 = step2 / 2;
+    
+    END WHILE loopFU;
+
+    END IF;
+
+END;
+$$
+
+
+
+DROP PROCEDURE IF EXISTS `bm_rules_timeslot_nodes_bottom_right`$$
+CREATE PROCEDURE `bm_rules_timeslot_nodes_bottom_right`(lower INT, upper INT)
+BEGIN
+    
+    DECLARE treeHeight INT DEFAULT 0;
+  	DECLARE treeRoot INT DEFAULT 0; 
+  	DECLARE treeNode INT DEFAULT 0; 
+  	DECLARE searchStep INT DEFAULT 0;
+	  DECLARE fork INT DEFAULT 0;
+	  DECLARE step2 INT DEFAULT 0;
+	
+  	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
+  	SET treeRoot    = power(2,(treeHeight-1)); 
+  	SET treeNode    = treeRoot;
+  	SET searchStep  = treeNode / 2;
+
+    -- holds a colletion of forkNodes 
+   	DROP TEMPORARY TABLE IF EXISTS `timeslot_nodes_bottom_right`;
+    CREATE TEMPORARY TABLE `timeslot_nodes_bottom_right` (`node` INT NOT NULL PRIMARY KEY)ENGINE=MEMORY; 
+    
+    -- Descend from the root node to the fork node
+    
+    loopRF:WHILE searchStep >= 1 DO
+      
+      IF treeNode < lower THEN SET treeNode = treeNode + searchStep;
+      ELSEIF upper < treeNode THEN SET treeNode = treeNode - searchStep;
+      ELSE SET fork = treeNode; LEAVE loopRF;
+      END IF;
+    
+      SET searchStep = searchStep / 2;
+    
+    END WHILE loopRF;
+    
+    
+    -- Descend from the fork node to upper
+    IF upper > fork THEN
+    
+      SET treeNode = fork + searchStep;
+      SET step2    = searchStep / 2;
+    
+    -- Nodes lower in tree than forkNode search interval that occur after
+    -- the upper interval of the search interval
+    loopFU:WHILE step2 >=1  DO
+      
+      IF treeNode < upper THEN
+        SET treeNode = treeNode + step2;
+      
+      ELSEIF upper < treeNode THEN
+        INSERT INTO `timeslot_nodes_bottom_right` (`node`) VALUES (treeNode);
+        SET treeNode = treeNode - step2;
+        
+      ELSE
+        LEAVE loopFU;
+        -- reached upper node  
+      END IF;
+      
+      SET step2 = step2 / 2;
+    
+    END WHILE loopFU;
+
+    END IF;
+
+END;
+$$
+

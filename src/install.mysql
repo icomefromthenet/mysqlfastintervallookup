@@ -1,1 +1,11 @@
+
+ALTER TABLE `timeslot_slots` DISABLE KEYS;
+ALTER TABLE `timeslot_slots_tree` DISABLE KEYS;
+ALTER TABLE `bookings_adv` DISABLE KEYS;
+  
+
 CALL bm_install_run(10);
+
+ALTER TABLE `timeslot_slots` ENABLE KEYS;
+ALTER TABLE `timeslot_slots_tree` ENABLE KEYS;
+ALTER TABLE `bookings_adv` ENABLE KEYS;

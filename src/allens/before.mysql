@@ -18,7 +18,21 @@
     AND closing_slot_id  > @start_ofday
     AND timeslot_id = 4 -- hour timeslot
     LIMIT 1;
+    
+    SELECT open_slot_id, close_slot_id  
+    INTO @min_start_ofday, @min_close_ofday
+    FROM calendar 
+    WHERE y = (select min(y) from calendar) 
+    AND w   = 4 
+    AND dw  = 1;
    
+    SELECT opening_slot_id, closing_slot_id 
+    INTO @min_start_slot_id, @min_close_slot_id
+    FROM timeslot_slots 
+    WHERE opening_slot_id <= @min_close_ofday 
+    AND closing_slot_id  > @min_start_ofday
+    AND timeslot_id = 4 -- hour timeslot
+    LIMIT 1;
     
 SET profiling=1;
 
@@ -46,8 +60,8 @@ SET profiling=1;
     JOIN slots s2 ON s2.slot_id = a.closing_slot_id     
     WHERE a.closing_slot_id < @start_slot_id
     AND a.timeslot_id = 4 -- hour timeslot
-	ORDER BY a.timeslot_slot_id DESC
-	LIMIT 1;
+	-- ORDER BY a.timeslot_slot_id DESC
+	LIMIT 10;
 	
 
 /*
@@ -84,10 +98,10 @@ SET profiling=1;
     FROM timeslot_slots a
     JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
     JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
-    WHERE a.opening_slot_id > @close_slot_id
+    WHERE a.opening_slot_id > @min_close_slot_id
     AND a.timeslot_id = 4 -- hour timeslot
-    Order by a.opening_slot_id ASC
-    LIMIT 1;
+    -- ORDER BY a.opening_slot_id ASC
+    LIMIT 10;
 	
 /*
  Result : This query finds the first slot from same group that occurs after the
