@@ -1,0 +1,63 @@
+SELECT open_slot_id, close_slot_id
+INTO @minslot, @maxslot
+FROM calendar 
+WHERE y = (select max(y)-1 from calendar) 
+AND w   = 4 
+AND dw  = 1;
+
+
+SET profiling=1;
+
+--  ----------------------------------------------------------------------------
+--  Example of the Meets-by Allens relation
+-- -----------------------------------------------------------------------------
+SELECT a.booking_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+FROM bookings_adv a 
+JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+WHERE a.opening_slot_id = @maxslot
+ORDER BY a.booking_id DESC
+LIMIT 10;
+
+-- SHOW SESSION STATUS LIKE 'Innodb_buffer_pool_read%';
+
+--  ----------------------------------------------------------------------------
+--  Example of the Meets-By Allens relation with tree
+-- -----------------------------------------------------------------------------
+
+call bm_rules_timeslot_nodes_top_right(@minslot,@maxslot);
+call bm_rules_timeslot_nodes_bottom_right(@minslot,@maxslot);
+
+SELECT a.booking_id
+      ,a.opening_slot_id
+      ,s1.slot_open
+      ,a.closing_slot_id
+      ,s2.slot_close
+FROM (
+    SELECT  ad.opening_slot_id
+           ,ad.closing_slot_id
+           ,ad.booking_id
+		FROM (
+            -- topRight
+            SELECT node 
+            FROM timeslot_nodes_top_right
+            UNION ALL
+            -- bottomRight
+            SELECT node
+            FROM timeslot_nodes_bottom_right
+            -- upper
+            UNION ALL
+            SELECT @maxslot
+        ) n, bookings_adv ad USE INDEX (`idx_bookings_adv_lowerUpperIndex`)
+        WHERE ad.node = n.node 
+        AND ad.opening_slot_id = @maxslot
+	LIMIT 10
+) a   
+JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+JOIN slots s2 ON s2.slot_id = a.closing_slot_id  
+ORDER BY a.booking_id DESC;
+
+-- SHOW SESSION STATUS LIKE 'Innodb_buffer_pool_read%';
+
+
+-- SHOW profiles;

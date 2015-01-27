@@ -1,0 +1,9 @@
+SET @minslot := 4237921;
+SET @maxslot := 4239361;
+--  ----------------------------------------------------------------------------
+--  Test of the Meets-By Allens relation with tree
+-- -----------------------------------------------------------------------------
+call bm_rules_timeslot_nodes_top_right(@minslot,@maxslot);
+call bm_rules_timeslot_nodes_bottom_right(@minslot,@maxslot);
+
+SELECT a.booking_id,a.opening_slot_id,s1.slot_open,a.closing_slot_id,s2.slot_close FROM (SELECT  ad.opening_slot_id,ad.closing_slot_id,ad.booking_id FROM (SELECT node FROM timeslot_nodes_top_right UNION ALL SELECT node FROM timeslot_nodes_bottom_right UNION ALL SELECT @maxslot) n, bookings_adv ad USE INDEX (`idx_bookings_adv_lowerUpperIndex`) WHERE ad.node = n.node AND ad.opening_slot_id = @maxslot LIMIT 10) a JOIN slots s1 ON s1.slot_id = a.opening_slot_id JOIN slots s2 ON s2.slot_id = a.closing_slot_id ORDER BY a.booking_id DESC;
