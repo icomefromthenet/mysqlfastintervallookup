@@ -63,32 +63,85 @@ BEGIN
 	SET l_last_row_fetched=0;
 
 
-	-- This table uses RI Tree so needs to call utl_fork_node to calculate the node column. 
-    -- This in effect creats a virtual tree structure.
-    -- Where limiting the max number of possible bookings from max number is slot table
-    -- In a production system we prob use the (INT max)
-  	SELECT min(slot_id) INTO @low FROM slots;
-	SELECT max(slot_id) INTO @high FROM slots;
-	
-  	INSERT INTO bookings_adv (booking_id,opening_slot_id,closing_slot_id,node)
-	SELECT NULL,(@low + FLOOR(RAND() * (@high-@low))), 1 ,1
-	FROM slots a
-	WHERE slot_id < 20001;
-	
-	-- add one to ensure where using closed-open interval format
-	UPDATE bookings_adv set closing_slot_id = (opening_slot_id + FLOOR(RAND() * (@high-opening_slot_id))) +1
-	WHERE 1=1;
-	
-	UPDATE bookings_adv set node = utl_fork_node(opening_slot_id,closing_slot_id)
-	WHERE 1=1;
-	
-	
     -- execute debug log cleanup
     IF @bm_debug = true THEN
     	CALL util_proc_cleanup('Finished Procedure bm_install_run()');
     END IF;
     
-END$$
+END;
+$$
 
 
 
+-- -----------------------------------------------------
+-- procedure bm_install_seed_bookings
+-- -----------------------------------------------------
+
+DROP PROCEDURE IF EXISTS `bm_install_seed_bookings`$$
+
+CREATE PROCEDURE `bm_install_seed_bookings` (IN numBookings INT, IN bookingTimeslotCount INT, IN bookingTimeslot INT)
+BEGIN
+	
+	DECLARE l_loop_count INT DEFAULT numBookings;
+	DECLARE l_random_calday_open INT DEFAULT 0;
+	DECLARE l_random_calday_close INT DEFAULT 0;
+	DECLARE l_timeslot_min_length INT;
+	DECLARE l_timeslot_random_open INT;
+	DECLARE l_timeslot_random_close INT;
+	SET numBookings = numBookings +1;
+	
+	-- fetch timeslot details
+	SELECT timeslot_length INTO l_timeslot_min_length FROM timeslots
+	WHERE timeslot_id = bookingTimeslot;
+
+	IF l_timeslot_min_length IS NULL  THEN
+		SIGNAL SQLSTATE '45000'
+		SET MESSAGE_TEXT = 'Unable to fetch timeslot length';
+	END IF;
+	
+	-- Create the debug table
+	IF @bm_debug = true THEN
+		CALL util_proc_setup();
+	END IF;
+	
+	-- This table uses RI Tree so needs to call utl_fork_node to calculate the node column. 
+    -- This in effect creats a virtual tree structure.
+    
+	bookingLoop:WHILE l_loop_count > 0 DO
+	
+		-- find random calender day.
+		SELECT open_slot_id, close_slot_id INTO l_random_calday_open,l_random_calday_close from calendar s
+		GROUP BY s.y, s.m, s.d
+		ORDER BY RAND()
+		LIMIT 1;
+		
+		-- find a random timeslot from that day as opening slot
+		-- this example of the occupies combined relation (Starts,Finishes,During and NOT Equal)
+		SELECT a.opening_slot_id INTO l_timeslot_random_open
+	    FROM timeslot_slots a
+	    WHERE (a.opening_slot_id >= l_random_calday_open AND a.closing_slot_id <= l_random_calday_close)
+	    AND NOT(a.opening_slot_id = l_random_calday_open AND a.closing_slot_id = l_random_calday_close)
+	    ORDER BY a.opening_slot_id ASC
+	    LIMIT 1;
+		
+		-- not adding 1 to closing slot as timeslot_slots start at 1 not 0
+		SET l_timeslot_random_close = l_timeslot_random_open + (l_timeslot_min_length * (CEIL(RAND() * bookingTimeslotCount)));
+		
+	  	INSERT INTO bookings_adv (booking_id,opening_slot_id,closing_slot_id,node) 
+	  	VALUES (NULL
+	  	       ,l_timeslot_random_open
+	  	       ,l_timeslot_random_close
+	  	       ,utl_fork_node(l_timeslot_random_open,l_timeslot_random_close)
+	  	);
+	
+		SET l_loop_count = l_loop_count -1;
+		
+	END WHILE bookingLoop;
+	
+	-- execute debug log cleanup
+    IF @bm_debug = true THEN
+    	CALL util_proc_cleanup('Finished Procedure bm_install_seed_bookings()');
+    END IF;
+
+END;
+$$
