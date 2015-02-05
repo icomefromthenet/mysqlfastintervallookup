@@ -1,0 +1,33 @@
+select min(`range_low`) from `prices_adv` INTO @minPrice;
+select max(`range_high`) from `prices_adv` INTO @maxPrice;
+--  ----------------------------------------------------------------------------
+--  Test of the before Allens relation
+-- -----------------------------------------------------------------------------
+
+SET profiling=1;
+
+SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
+FROM ( SELECT `price_id`
+    FROM `prices_basic` 
+    WHERE `range_high` < @maxPrice/2
+) a, prices_basic b
+WHERE `a`.`price_id` = `b`.`price_id`
+LIMIT 10;
+
+
+--  ----------------------------------------------------------------------------
+--  Test of the before Allens relation using tree method
+-- -----------------------------------------------------------------------------
+
+SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
+FROM (
+    SELECT `price_id`
+    FROM `prices_adv` USE INDEX (`idx_prices_adv_upperLowerIndex`)
+    WHERE `node` < (@maxPrice/2) 
+    AND `range_high` <  (@maxPrice/2)
+) a, prices_adv b
+WHERE `a`.`price_id` = `b`.`price_id`
+LIMIT 10;
+
+SHOW PROFILES;
+

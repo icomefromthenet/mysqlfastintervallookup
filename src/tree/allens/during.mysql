@@ -1,0 +1,69 @@
+SELECT open_slot_id, close_slot_id
+INTO @minslot, @maxslot
+FROM calendar 
+WHERE y = (select max(y)-1 from calendar) 
+AND w   = 4 
+AND dw  = 1; 
+
+
+SET profiling=1;
+
+--  ----------------------------------------------------------------------------
+--  Example of the During Allens relation
+-- -----------------------------------------------------------------------------
+
+SELECT a.booking_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
+FROM bookings_adv a 
+JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+JOIN slots s2 ON s2.slot_id = a.closing_slot_id 
+WHERE a.opening_slot_id > @minslot  
+AND  a.closing_slot_id < @maxslot
+ORDER BY a.booking_id DESC
+LIMIT 10;
+
+-- SHOW SESSION STATUS LIKE 'Innodb_buffer_pool_read%';
+
+
+--  ----------------------------------------------------------------------------
+--  Example of the During Allens relation with advanced tree
+-- -----------------------------------------------------------------------------
+CALL bm_rules_timeslot_nodes_top_right(@minslot,@maxslot);
+CALL bm_rules_timeslot_nodes_top_left(@minslot,@maxslot);
+
+
+SELECT a.booking_id
+      ,a.opening_slot_id
+      ,s1.slot_open
+      ,a.closing_slot_id
+      ,s2.slot_close
+FROM (
+        SELECT *
+        FROM (
+            SELECT  ad.opening_slot_id
+                   ,ad.closing_slot_id
+                   ,ad.booking_id
+            FROM bookings_adv ad USE INDEX (`idx_bookings_adv_lowerUpperIndex`)
+            WHERE ad.node > @minslot
+            AND ad.node <= utl_fork_node(@minslot,@maxslot)
+            AND ad.opening_slot_id > @maxslot
+            AND ad.closing_slot_id < @maxslot
+    
+            UNION ALL
+            
+            SELECT  ad.opening_slot_id
+                   ,ad.closing_slot_id
+                   ,ad.booking_id
+            bookings_adv ad USE INDEX (`idx_bookings_adv_upperLowerIndex`)
+            WHERE ad.node > utl_fork_node(@minslot,@maxslot)
+            AND ad.node < @maxslot
+            AND ad.closing_slot_id < @maxslot
+        )        
+   	LIMIT 10
+) a   
+JOIN slots s1 ON s1.slot_id = a.opening_slot_id 
+JOIN slots s2 ON s2.slot_id = a.closing_slot_id  
+ORDER BY a.booking_id DESC;
+
+
+-- SHOW SESSION STATUS LIKE 'Innodb_buffer_pool_read%';
+SHOW profiles;

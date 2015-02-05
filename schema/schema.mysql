@@ -281,32 +281,29 @@ COMMENT = 'Groups our timeslots into slot groups.';
 
 
 -- -----------------------------------------------------
--- Table `bookings_adv` books with ritree
+-- Table `bookings` 
 -- -----------------------------------------------------
-DROP TABLE IF EXISTS `bookings_adv` ;
+DROP TABLE IF EXISTS `bookings` ;
 
-CREATE TABLE IF NOT EXISTS `bookings_adv` (
-  -- uses a closed:open interval format
-  -- 
-  -- RI Tree
-
+CREATE TABLE IF NOT EXISTS `bookings` (
+  
   `booking_id` INT NOT NULL AUTO_INCREMENT,
   `opening_slot_id` INT NOT NULL,
   `closing_slot_id` INT NOT NULL,
   
-  -- Value of the fork node, used to part of the RI Tree
-  `node` INT NOT NULL,
   
   -- Constraints and indexes
   PRIMARY KEY (`booking_id`),
   
-  -- RI Indexes advanced.
-  INDEX `idx_bookings_adv_lowerUpperIndex` (`node`,`opening_slot_id`,`closing_slot_id`,`booking_id`),
-  INDEX `idx_bookings_adv_upperLowerIndex` (`node`,`closing_slot_id`,`opening_slot_id`,`booking_id`)
   
+  -- Extra Columns that booking might have
+  `address_line_1` VARCHAR(255) NOT NULL,
+  `address_line_2` VARCHAR(255),
+  `cust_title` VARCHAR(5),
+  `cust_fname` VARCHAR(100) NOT NULL,
+  `cust_lname` VARCHAR(100) NOT NULL,
   
   -- Normal Constraints
-  /*
   CONSTRAINT `fk_bookings_adv_2`
     FOREIGN KEY (`opening_slot_id`)
     REFERENCES `slots` (`slot_id`)
@@ -316,9 +313,78 @@ CREATE TABLE IF NOT EXISTS `bookings_adv` (
     FOREIGN KEY (`closing_slot_id`)
     REFERENCES `slots` (`slot_id`)
     ON DELETE NO ACTION
-    ON UPDATE NO ACTION */
+    ON UPDATE NO ACTION 
 ) ENGINE = InnoDB
-COMMENT = 'RI Tree for bookings table';
+COMMENT = 'Bookings table with interval values part of a fk relation';
+
+SET SQL_MODE=@OLD_SQL_MODE;
+SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
+SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+
+
+-- -----------------------------------------------------
+-- Table `prices_adv` books with ritree
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `prices_adv` ;
+
+CREATE TABLE IF NOT EXISTS `prices_adv` (
+  -- uses a closed:open interval format
+  -- 
+  -- RI Tree
+
+  `price_id` INT NOT NULL AUTO_INCREMENT,
+  `range_low` INT NOT NULL,
+  `range_high` INT NOT NULL,
+  
+  -- Value of the fork node, used to part of the RI Tree
+  `node` INT NOT NULL,
+  
+  -- Constraints and indexes
+  PRIMARY KEY (`price_id`),
+  
+  -- RI Indexes advanced.
+  INDEX `idx_prices_adv_lowerUpperIndex` (`node`,`range_low`,`range_high`,`price_id`),
+  INDEX `idx_prices_adv_upperLowerIndex` (`node`,`range_high`,`range_low`,`price_id`),
+  
+  
+  -- Extra Columns that booking might have
+  `product_description` VARCHAR(255) NOT NULL,
+  `product_name` VARCHAR(255),
+  `extra_a` VARCHAR(100),
+  `extra_b` VARCHAR(100) NOT NULL,
+  `extra_c` VARCHAR(100) NOT NULL
+  
+  
+) ENGINE = InnoDB
+COMMENT = 'RI Tree for prices range table';
+
+
+-- -----------------------------------------------------
+-- Table `prices_adv` books with ritree
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `prices_basic` ;
+
+CREATE TABLE IF NOT EXISTS `prices_basic` (
+  -- uses a closed:open interval format
+  
+  `price_id` INT NOT NULL AUTO_INCREMENT,
+  `range_low` INT NOT NULL,
+  `range_high` INT NOT NULL,
+  
+  
+  -- Constraints and indexes
+  PRIMARY KEY (`price_id`),
+  
+  -- Extra Columns that booking might have
+  `product_description` VARCHAR(255) NOT NULL,
+  `product_name` VARCHAR(255),
+  `extra_a` VARCHAR(100),
+  `extra_b` VARCHAR(100) NOT NULL,
+  `extra_c` VARCHAR(100) NOT NULL
+  
+  
+) ENGINE = InnoDB
+COMMENT = 'Common example of price range range table';
 
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;

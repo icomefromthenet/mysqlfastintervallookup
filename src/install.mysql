@@ -7,10 +7,16 @@ SET @debug = true;
 
 CALL bm_install_run(10);
 
+-- 1000 cost variations
+-- using max from slots as thats root node that tree uses values in (cents)
+-- min value = 1 value in (cents)
+CALL bm_install_seed_price(1000000,(SELECT max(slot_id) FROM slots),1);
+
+
 -- 2000 bookings
 -- want between 1 and 3 slots per booking
 -- timeslot 2 halfhour timeslot
-CALL bm_install_seed_bookings(10000,3,2);
+-- CALL bm_install_seed_bookings(10000,3,2);
 
 ALTER TABLE `timeslot_slots` ENABLE KEYS;
 ALTER TABLE `timeslot_slots_tree` ENABLE KEYS;

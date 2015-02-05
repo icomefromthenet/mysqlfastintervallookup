@@ -127,11 +127,15 @@ BEGIN
 		-- not adding 1 to closing slot as timeslot_slots start at 1 not 0
 		SET l_timeslot_random_close = l_timeslot_random_open + (l_timeslot_min_length * (CEIL(RAND() * bookingTimeslotCount)));
 		
-	  	INSERT INTO bookings_adv (booking_id,opening_slot_id,closing_slot_id,node) 
+	  	INSERT INTO bookings (booking_id,opening_slot_id,closing_slot_id,node,address_line_1,address_line_2,cust_title,cust_fname,cust_lname) 
 	  	VALUES (NULL
 	  	       ,l_timeslot_random_open
 	  	       ,l_timeslot_random_close
-	  	       ,utl_fork_node(l_timeslot_random_open,l_timeslot_random_close)
+	  	       ,'78 Test Street Example Suburb'
+	  	       ,'Example City ,11111'
+	  	       ,'Mr'
+	  	       ,'TestFname'
+	  	       ,'TestLname'
 	  	);
 	
 		SET l_loop_count = l_loop_count -1;
@@ -145,3 +149,52 @@ BEGIN
 
 END;
 $$
+
+
+-- -----------------------------------------------------
+-- procedure bm_install_seed_costs
+-- -----------------------------------------------------
+
+DROP PROCEDURE IF EXISTS `bm_install_seed_price`$$
+
+CREATE PROCEDURE `bm_install_seed_price` (IN numCosts INT, IN maxHigh INT, IN minLow INT)
+BEGIN
+
+	DECLARE l_loop_count INT DEFAULT 0;
+	DECLARE l_random_low INT DEFAULT 0;
+	DECLARE l_random_high INT DEFAULT 0;
+	DECLARE l_max_high INT;
+	
+	SET numCosts = numCosts +1;
+	SET l_loop_count = numCosts;
+	
+	-- Create the debug table
+	IF @bm_debug = true THEN
+		CALL util_proc_setup();
+	END IF;
+	
+	
+	costLoop:WHILE l_loop_count > 0 DO
+	
+		SET l_random_low  = minLow + FLOOR(RAND() * (maxHigh-minLow));
+		SET l_random_high = l_random_low + FLOOR(RAND()*(maxHigh-l_random_low)) + 1;
+		
+		INSERT INTO `prices_adv` (`price_id`, `range_low`,`range_high`,`node`,`product_description`,`product_name`, `extra_a`,`extra_b`,`extra_c`)
+		VALUES (NULL,l_random_low,l_random_high,utl_fork_node(l_random_low,l_random_high),'A test product description','A test product name','a','b','c');
+		
+		INSERT INTO `prices_basic` (`price_id`, `range_low`,`range_high`,`product_description`,`product_name`, `extra_a`,`extra_b`,`extra_c`)
+		VALUES (NULL,l_random_low,l_random_high,'A test product description','A test product name','a','b','c');
+		
+		SET l_loop_count = l_loop_count -1;
+		
+	END WHILE costLoop;
+	
+	-- execute debug log cleanup
+    IF @bm_debug = true THEN
+    	CALL util_proc_cleanup('Finished Procedure bm_install_seed_costs()');
+    END IF;
+
+END;
+$$
+
+
