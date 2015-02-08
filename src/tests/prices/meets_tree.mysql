@@ -1,0 +1,9 @@
+select min(`range_low`) from `prices_adv` INTO @minPrice;
+select max(`range_high`) from `prices_adv` INTO @maxPrice;
+--  ----------------------------------------------------------------------------
+--  Test of the Meets Allens relation with Ri Tree
+-- -----------------------------------------------------------------------------
+CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
+CALL bm_rules_timeslot_nodes_bottom_left(@minPrice,@maxPrice);
+
+SELECT SQL_NO_CACHE `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2) FROM (SELECT `price_id` FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`),(SELECT `node` FROM `timeslot_nodes_top_left` UNION ALL SELECT `node` FROM `timeslot_nodes_bottom_left` UNION ALL SELECT @minPrice as `node`) q  WHERE `i`.`node` = `q`.`node` AND `i`.`range_high` = @minPrice) a, prices_adv b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;

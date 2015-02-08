@@ -1,0 +1,6 @@
+select min(`range_low`) from `prices_adv` INTO @minPrice;
+select max(`range_high`) from `prices_adv` INTO @maxPrice;
+--  ----------------------------------------------------------------------------
+--  Test of the Meets Allens relation
+-- -----------------------------------------------------------------------------
+SELECT SQL_NO_CACHE `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2) FROM ( SELECT `price_id` FROM `prices_basic` WHERE `range_high` = @minPrice) a, prices_basic b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;

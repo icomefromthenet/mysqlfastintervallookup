@@ -1,7 +1,7 @@
 select min(`range_low`) from `prices_adv` INTO @minPrice;
 select max(`range_high`) from `prices_adv` INTO @maxPrice;
 --  ----------------------------------------------------------------------------
---  Test of the before Allens relation
+--  Test of the Meets Allens relation
 -- -----------------------------------------------------------------------------
 
 SET profiling=1;
@@ -9,22 +9,34 @@ SET profiling=1;
 SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM ( SELECT `price_id`
     FROM `prices_basic` 
-    WHERE `range_high` < @maxPrice/2
+    WHERE `range_high` = @minPrice
 ) a, prices_basic b
 WHERE `a`.`price_id` = `b`.`price_id`
 LIMIT 10;
 
 
 --  ----------------------------------------------------------------------------
---  Test of the before Allens relation using tree method
+--  Test of the Meets relation using tree method
 -- -----------------------------------------------------------------------------
+
+CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
+CALL bm_rules_timeslot_nodes_bottom_left(@minPrice,@maxPrice);
 
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
     SELECT `price_id`
-    FROM `prices_adv`  USE INDEX (`idx_prices_adv_upperLowerIndex`)
-    WHERE `node` < (@maxPrice/2) 
-    AND `range_high` <  (@maxPrice/2)
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`),(
+    -- topLeft
+    SELECT `node` FROM `timeslot_nodes_top_left`
+    UNION ALL
+    -- botttomLeft
+    SELECT `node` FROM `timeslot_nodes_bottom_left`    
+    -- lower    
+    UNION ALL
+    SELECT @minPrice as node
+    ) q
+    WHERE `i`.`node` = `q`.`node`
+    AND `i`.`range_high` = @minPrice
 ) a, prices_adv b
 WHERE `a`.`price_id` = `b`.`price_id`
 LIMIT 10;
