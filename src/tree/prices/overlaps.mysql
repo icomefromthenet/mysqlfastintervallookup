@@ -1,21 +1,20 @@
-select min(`range_low`) from `prices_adv` INTO @minPrice;
-select max(`range_high`) from `prices_adv` INTO @maxPrice;
+select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
 --  ----------------------------------------------------------------------------
 --  Test of the Overlaps Allens relation
 -- -----------------------------------------------------------------------------
 
-SET profiling=1;
+-- SET profiling=1;
 
-SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
+SELECT  `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM ( SELECT `price_id`
     FROM `prices_basic`
-    WHERE `range_low` < @range_low
-    AND  `range_high` > @range_low
-    AND  `range_high` < @range_high
+    WHERE `range_low` < @minPrice
+    AND  `range_high` > @minPrice
+    AND  `range_high` < @maxPrice
 ) a, prices_basic b
 WHERE `a`.`price_id` = `b`.`price_id`
+ORDER BY `b`.`price_id` ASC
 LIMIT 10;
-
 
 
 --  ----------------------------------------------------------------------------
@@ -25,8 +24,9 @@ LIMIT 10;
 CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
 CALL bm_rules_timeslot_nodes_bottom_left(@minPrice,@maxPrice);
 CALL bm_rules_timeslot_nodes_inner_left(@minPrice,@maxPrice);
+SET @forkNode = utl_fork_node(@minPrice,@maxPrice);
 
-SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
+SELECT  `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM (
     SELECT `price_id`
     FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`),(
@@ -51,7 +51,7 @@ FROM (
         SELECT @minPrice as `node`
         -- fork
         UNION ALL
-        SELECT utl_fork_node(@minPrice,@maxPrice) as `node` 
+        SELECT @forkNode as `node` 
     ) q
     WHERE `i`.`node` = `q`.`node`
     AND `i`.`range_low` < @minPrice
@@ -60,7 +60,8 @@ FROM (
     
 ) a, prices_adv b
 WHERE `a`.`price_id` = `b`.`price_id`
+ORDER BY `b`.`price_id` ASC
 LIMIT 10;
 
-SHOW PROFILES;
+-- SHOW PROFILES;
 

@@ -1,6 +1,5 @@
-select min(`range_low`) from `prices_adv` INTO @minPrice;
-select max(`range_high`) from `prices_adv` INTO @maxPrice;
+select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
 --  ----------------------------------------------------------------------------
 --  Test of the After Allens relation with Ri Tree
 -- -----------------------------------------------------------------------------
-SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2) FROM (SELECT `price_id` FROM `prices_adv` USE INDEX (`idx_prices_adv_lowerUpperIndex`) WHERE `node` > (@maxPrice/2) AND `range_low` >  (@maxPrice/2)) a, prices_adv b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;
+SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2) FROM (SELECT `price_id` FROM `prices_adv` USE INDEX (`idx_prices_adv_lowerUpperIndex`) WHERE `node` > (@maxPrice) AND `range_low` >  (@maxPrice)) a, prices_adv b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;

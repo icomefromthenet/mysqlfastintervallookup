@@ -1,6 +1,5 @@
-select min(`range_low`) from `prices_adv` INTO @minPrice;
-select max(`range_high`) from `prices_adv` INTO @maxPrice;
+select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
 --  ----------------------------------------------------------------------------
 --  Test of the Before Allens relation
 -- -----------------------------------------------------------------------------
-SELECT SQL_NO_CACHE `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2) FROM (SELECT `price_id` FROM `prices_basic` WHERE `range_high` < @maxPrice/2) a, prices_basic b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;
+SELECT SQL_NO_CACHE `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2) FROM (SELECT `price_id` FROM `prices_basic` WHERE `range_high` < @maxPrice) a, prices_basic b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;

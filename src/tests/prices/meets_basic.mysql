@@ -1,5 +1,4 @@
-select min(`range_low`) from `prices_adv` INTO @minPrice;
-select max(`range_high`) from `prices_adv` INTO @maxPrice;
+select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
 --  ----------------------------------------------------------------------------
 --  Test of the Meets Allens relation
 -- -----------------------------------------------------------------------------

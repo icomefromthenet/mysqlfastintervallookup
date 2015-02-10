@@ -1,14 +1,14 @@
 select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
 --  ----------------------------------------------------------------------------
---  Test of the before Allens relation
+--  Test of the Meets-By Allens relation
 -- -----------------------------------------------------------------------------
 
-SET profiling=1;
+-- SET profiling=1;
 
 SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM ( SELECT `price_id`
     FROM `prices_basic` 
-    WHERE `range_high` < @maxPrice
+    WHERE `range_low` = @maxPrice
 ) a, prices_basic b
 WHERE `a`.`price_id` = `b`.`price_id`
 ORDER BY `b`.`price_id` ASC
@@ -16,19 +16,33 @@ LIMIT 10;
 
 
 --  ----------------------------------------------------------------------------
---  Test of the before Allens relation using tree method
+--  Test of the Meets-By relation using tree method
 -- -----------------------------------------------------------------------------
+
+CALL bm_rules_timeslot_nodes_top_right(@minPrice,@maxPrice);
+SET @forkNode = utl_fork_node(@minPrice,@maxPrice);
 
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
+    
     SELECT `price_id`
-    FROM `prices_adv`  USE INDEX (`idx_prices_adv_upperLowerIndex`)
-    WHERE `node` < @maxPrice
-    AND `range_high` <  @maxPrice
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`)
+    JOIN (
+    -- topRight
+    SELECT `node` FROM `timeslot_nodes_top_right`
+    UNION ALL
+    -- forkNode
+    SELECT @forkNode as `node`
+    -- upper
+    UNION ALL
+    SELECT @maxPrice as node
+    ) q ON `i`.`node` = `q`.`node`
+    WHERE `i`.`range_low` = @maxPrice
+    
 ) a, prices_adv b
 WHERE `a`.`price_id` = `b`.`price_id`
 ORDER BY `b`.`price_id` ASC
 LIMIT 10;
 
-SHOW PROFILES;
+-- SHOW PROFILES;
 
