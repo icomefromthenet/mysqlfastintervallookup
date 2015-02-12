@@ -339,7 +339,7 @@ BEGIN
   	DECLARE treeNode INT DEFAULT 0; 
   	DECLARE searchStep INT DEFAULT 0;
 	  DECLARE fork INT DEFAULT 0;
-	  DECLARE step2 INT DEFAULT 0;
+	  DECLARE rstep INT DEFAULT 0;
 	
   	SET treeHeight  = ceil(LOG2((SELECT MAX(`slot_id`) FROM `slots`)+1));
   	SET treeRoot    = power(2,(treeHeight-1)); 
@@ -368,26 +368,25 @@ BEGIN
     IF upper > fork THEN
     
       SET treeNode = fork + searchStep;
-      SET step2    = searchStep / 2;
+      SET rstep    = searchStep / 2;
 
     -- Node that occur lower in tree than the forkNode and occur before the
     -- upper bound of the search interval
     
-    loopFU:WHILE step2 >=1  DO
+    loopFU:WHILE rstep >=1  DO
     
       IF treeNode < upper THEN
-        SET treeNode = treeNode + step2;
         INSERT INTO `timeslot_nodes_inner_right` (`node`) VALUES (treeNode);
-      
+        SET treeNode = treeNode + rstep;
       ELSEIF upper < treeNode THEN
-        SET treeNode = treeNode - step2;
+        SET treeNode = treeNode - rstep;
   
       ELSE
         LEAVE loopFU;
         -- reached upper node
       END IF;
       
-      SET step2 = step2 / 2;
+      SET rstep = rstep / 2;
     
     END WHILE loopFU;
 

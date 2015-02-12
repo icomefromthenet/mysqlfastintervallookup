@@ -9,11 +9,12 @@ SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM ( SELECT `price_id`
     FROM `prices_basic` 
     WHERE `range_high` = @minPrice
+    ORDER BY `range_high` ASC
+    LIMIT 10
 ) a, prices_basic b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
 
+SET profiling=0;
 
 --  ----------------------------------------------------------------------------
 --  Test of the Meets relation using tree method
@@ -21,6 +22,8 @@ LIMIT 10;
 
 CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
 CALL bm_rules_timeslot_nodes_bottom_left(@minPrice,@maxPrice);
+
+SET profiling=1;
 
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
@@ -37,10 +40,11 @@ FROM (
     ) q
     WHERE `i`.`node` = `q`.`node`
     AND `i`.`range_high` = @minPrice
+    ORDER BY `i`.`range_high` ASC
+    LIMIT 10
+
 ) a, prices_adv b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
 
 SHOW PROFILES;
 

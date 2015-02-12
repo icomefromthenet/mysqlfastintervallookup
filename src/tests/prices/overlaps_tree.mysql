@@ -2,9 +2,9 @@ select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @
 --  ----------------------------------------------------------------------------
 --  Test of the Overlaps Allens relation with RI Tree
 -- -----------------------------------------------------------------------------
-
 CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
 CALL bm_rules_timeslot_nodes_bottom_left(@minPrice,@maxPrice);
 CALL bm_rules_timeslot_nodes_inner_left(@minPrice,@maxPrice);
+SET @forkNode = utl_fork_node(@minPrice,@maxPrice);
 
-SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2) FROM (SELECT `price_id` FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`),(SELECT `node` FROM `timeslot_nodes_top_left` UNION ALL SELECT `node` FROM `timeslot_nodes_bottom_left`) q WHERE `i`.`node` = `q`.`node` AND `i`.`range_low` < @maxPrice AND `i`.`range_high` < @maxPrice  UNION ALL  SELECT `price_id` FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`), (SELECT `node` FROM `timeslot_nodes_inner_left` UNION ALL SELECT @minPrice as `node` UNION ALL SELECT utl_fork_node(@minPrice,@maxPrice) as `node`) q WHERE `i`.`node` = `q`.`node` AND `i`.`range_low` < @minPrice  AND `i`.`range_high` < @maxPrice AND `i`.`range_high` > @minPrice) a, prices_adv b WHERE `a`.`price_id` = `b`.`price_id` LIMIT 10;
+SELECT SQL_NO_CACHE `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2) FROM ( SELECT `price_id` FROM ( SELECT `i`.`price_id`,`i`.`range_high` FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`) JOIN (SELECT `node` FROM `timeslot_nodes_top_left`  UNION ALL SELECT `node` FROM `timeslot_nodes_bottom_left`) q ON  `i`.`node` = `q`.`node` WHERE `i`.`range_high` > @minPrice AND `i`.`range_high` < @maxPrice UNION ALL SELECT `price_id`,`i`.`range_high` FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`)  JOIN ( SELECT `node` FROM `timeslot_nodes_inner_left` UNION ALL SELECT @minPrice as `node` UNION ALL SELECT @forkNode as `node`) q ON `i`.`node` = `q`.`node` WHERE `i`.`range_low` < @minPrice AND `i`.`range_high` < @maxPrice  AND `i`.`range_high` > @minPrice) j ORDER BY `j`.`range_high` ASC LIMIT 10) a, prices_adv b WHERE `a`.`price_id` = `b`.`price_id`;

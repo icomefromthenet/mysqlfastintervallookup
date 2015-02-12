@@ -9,10 +9,11 @@ FROM ( SELECT `price_id`
     FROM `prices_basic` 
     WHERE `range_low` = @minPrice
     AND `range_high` = @maxPrice
+    ORDER BY `range_high` ASC
+    LIMIT 10
 ) a, prices_basic b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
+
 
 
 --  ----------------------------------------------------------------------------
@@ -30,9 +31,9 @@ FROM (
     WHERE `i`.node = @forkNode
     AND `i`.`range_low`  = @minPrice
     AND `i`.`range_high` = @maxPrice
+    ORDER BY `i`.`range_high` ASC
+    LIMIT 10
 ) a, prices_adv b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
 
 

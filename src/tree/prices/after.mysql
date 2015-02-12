@@ -9,10 +9,12 @@ SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM ( SELECT `price_id`
     FROM `prices_basic` 
     WHERE `range_low` > @maxPrice
+    ORDER BY `range_low` ASC
+    LIMIT 10
 ) a, prices_basic b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
+
+
 
 
 --  ----------------------------------------------------------------------------
@@ -25,10 +27,12 @@ FROM (
     FROM `prices_adv` USE INDEX (`idx_prices_adv_lowerUpperIndex`)
     WHERE `node` > @maxPrice
     AND `range_low` >  @maxPrice
+    ORDER BY `range_low` ASC
+    LIMIT 10
 ) a, prices_adv b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
+
+
 
 SHOW PROFILES;
 
