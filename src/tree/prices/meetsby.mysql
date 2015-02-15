@@ -27,23 +27,20 @@ SET profiling=1;
 
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
-    SELECT `j`.`price_id`
-    FROM (   
-        SELECT `price_id` ,`range_low`
-        FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`)
-        JOIN (
-            -- topRight
-            SELECT `node` FROM `timeslot_nodes_top_right`
-            UNION ALL
-            -- bottomRight
-            SELECT `node` FROM `timeslot_nodes_bottom_right`
-            -- upper
-            UNION ALL
-            SELECT @maxPrice as node
-        ) q ON `i`.`node` = `q`.`node`
-        WHERE `i`.`range_low` = @maxPrice
-    ) j
-    ORDER BY `j`.`range_low` ASC
+    SELECT `price_id` ,`range_low`
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`)
+    JOIN (
+        -- topRight
+        SELECT `node` FROM `timeslot_nodes_top_right`
+        UNION ALL
+        -- bottomRight
+        SELECT `node` FROM `timeslot_nodes_bottom_right`
+        -- upper
+        UNION ALL
+        SELECT @maxPrice as node
+    ) q ON `i`.`node` = `q`.`node`
+    WHERE `i`.`range_low` = @maxPrice
+    ORDER BY `i`.`range_low` ASC
     LIMIT 10
 ) a, prices_adv b
 WHERE `a`.`price_id` = `b`.`price_id`;

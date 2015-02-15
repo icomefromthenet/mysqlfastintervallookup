@@ -14,9 +14,6 @@ FROM ( SELECT `price_id`
 ) a, prices_basic b
 WHERE `a`.`price_id` = `b`.`price_id`;
 
-
-
-
 --  ----------------------------------------------------------------------------
 --  Test of the after Allens relation using tree method
 -- -----------------------------------------------------------------------------

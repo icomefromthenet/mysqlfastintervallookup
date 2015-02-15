@@ -1,0 +1,130 @@
+SELECT `range_high`,`range_low` FROM `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
+--  ----------------------------------------------------------------------------
+--  Test of the Intersects Combined Relation
+-- -----------------------------------------------------------------------------
+SET profiling=1;
+
+SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
+FROM ( SELECT `price_id`
+    FROM `prices_basic` 
+    WHERE `range_low` <= @maxPrice
+    AND `range_high` > @minPrice
+    ORDER BY `range_high` ASC
+    LIMIT 10
+) a, prices_basic b
+WHERE `a`.`price_id` = `b`.`price_id`;
+
+SET profiling=0;
+--  ----------------------------------------------------------------------------
+--  Test of the Intersects Combined Relation With Tree
+-- -----------------------------------------------------------------------------
+CALL bm_rules_timeslot_left_nodes(@minPrice,@maxPrice);
+CALL bm_rules_timeslot_right_nodes(@minPrice,@maxPrice);
+
+SET profiling=1;
+
+
+SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
+FROM ( 
+    
+    (SELECT `i`.`price_id`,`i`.`range_high`
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`)
+    JOIN `timeslot_left_nodes_result` l ON `i`.`node` = `l`.`node`
+    AND `i`.`range_high` > @minPrice
+    ORDER BY `range_high` ASC)
+    
+    UNION ALL
+    
+    (SELECT `i`.`price_id`, `i`.`range_high`
+    FROM `prices_adv` i  USE INDEX (`idx_prices_adv_lowerUpperIndex`)
+    JOIN timeslot_right_nodes_result l ON `i`.node = `l`.`node`
+    AND `i`.`range_low` <= @maxPrice
+    ORDER BY `range_high` ASC)
+    
+    UNION ALL 
+    
+    (SELECT `i`.`price_id`,`i`.`range_high`
+    FROM `prices_adv` i 
+    WHERE `i`.`node` BETWEEN @minPrice AND @maxPrice
+    ORDER BY `range_high` ASC) 
+    
+    
+    LIMIT 10
+
+) a , prices_adv b
+WHERE `a`.`price_id` = `b`.`price_id`;
+
+
+SHOW PROFILES;
+
+
+SET profiling=0;
+
+/*
+SELECT count(*)
+FROM (
+    SELECT `price_id`
+    FROM `prices_basic` 
+    WHERE `range_low` <= @maxPrice
+    AND `range_high` > @minPrice
+) a
+LEFT JOIN(
+   
+    (SELECT `i`.`price_id`
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`)
+    JOIN `timeslot_left_nodes_result` l ON `i`.`node` = `l`.`node`
+    AND `i`.`range_high` > @minPrice
+    )
+    
+    UNION ALL
+    
+    (SELECT `i`.`price_id`
+    FROM `prices_adv` i  USE INDEX (`idx_prices_adv_lowerUpperIndex`)
+    JOIN timeslot_right_nodes_result l ON `i`.node = `l`.`node`
+    AND `i`.`range_low` <= @maxPrice
+    )
+    
+    UNION ALL 
+    
+    (SELECT `i`.`price_id`
+    FROM `prices_adv` i 
+    WHERE `i`.`node` BETWEEN @minPrice AND @maxPrice
+    )
+    
+) b ON `b`.`price_id` = `a`.`price_id`
+WHERE `b`.`price_id` IS NULL;
+
+
+SELECT count(*)
+FROM (
+    
+    (SELECT `i`.`price_id`
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`)
+    JOIN `timeslot_left_nodes_result` l ON `i`.`node` = `l`.`node`
+    AND `i`.`range_high` > @minPrice)
+    
+    UNION ALL
+    
+    (SELECT `i`.`price_id`
+    FROM `prices_adv` i  USE INDEX (`idx_prices_adv_lowerUpperIndex`)
+    JOIN timeslot_right_nodes_result l ON `i`.node = `l`.`node`
+    AND `i`.`range_low` <= @maxPrice)
+    
+    UNION ALL 
+    
+    (SELECT `i`.`price_id`
+    FROM `prices_adv` i 
+    WHERE `i`.`node` BETWEEN @minPrice AND @maxPrice)
+  
+) a
+LEFT JOIN(
+     
+    SELECT `price_id`
+    FROM `prices_basic` 
+    WHERE `range_low` <= @maxPrice
+    AND `range_high` > @minPrice
+    
+) b ON `b`.`price_id` = `a`.`price_id`
+WHERE `b`.`price_id` IS NULL;
+
+*/

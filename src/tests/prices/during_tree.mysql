@@ -1,0 +1,6 @@
+select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
+--  ----------------------------------------------------------------------------
+--  Test of the During Allens relation using tree method
+-- -----------------------------------------------------------------------------
+SET @forkNode = utl_fork_node(@minPrice,@maxPrice);
+SELECT SQL_NO_CACHE `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2) FROM ( (SELECT `i`.`price_id`,`i`.`range_high` FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`) WHERE  `i`.`node` <= @forkNode AND `i`.`range_low`  > @minPrice AND `i`.`range_high` < @maxPrice) UNION ALL (SELECT `i`.`price_id`, `i`.`range_high` FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`) WHERE  `i`.`node` > @forkNode AND `i`.`node` < @maxPrice AND `i`.`range_high` < @maxPrice) ORDER BY `range_high` LIMIT 10) a, prices_adv b WHERE `a`.`price_id` = `b`.`price_id`;

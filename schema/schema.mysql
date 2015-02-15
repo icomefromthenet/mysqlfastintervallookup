@@ -281,19 +281,18 @@ COMMENT = 'Groups our timeslots into slot groups.';
 
 
 -- -----------------------------------------------------
--- Table `bookings` 
+-- Table `bookings_adv` 
 -- -----------------------------------------------------
-DROP TABLE IF EXISTS `bookings` ;
-
-CREATE TABLE IF NOT EXISTS `bookings` (
+DROP TABLE IF EXISTS `bookings_adv`;
+CREATE TABLE IF NOT EXISTS `bookings_adv` (
   
   `booking_id` INT NOT NULL AUTO_INCREMENT,
   `opening_slot_id` INT NOT NULL,
   `closing_slot_id` INT NOT NULL,
   
   
-  -- Constraints and indexes
-  PRIMARY KEY (`booking_id`),
+   -- Value of the fork node, used to part of the RI Tree
+  `node` INT NOT NULL,
   
   
   -- Extra Columns that booking might have
@@ -303,13 +302,21 @@ CREATE TABLE IF NOT EXISTS `bookings` (
   `cust_fname` VARCHAR(100) NOT NULL,
   `cust_lname` VARCHAR(100) NOT NULL,
   
+  -- Constraints and indexes
+  PRIMARY KEY (`booking_id`),
+  
+  -- RI Indexes advanced.
+  INDEX `idx_bookings_adv_lowerUpperIndex` (`node`,`opening_slot_id`,`closing_slot_id`,`booking_id`),
+  INDEX `idx_bookings_adv_upperLowerIndex` (`node`,`closing_slot_id`,`opening_slot_id`,`booking_id`),
+  
+  
   -- Normal Constraints
-  CONSTRAINT `fk_bookings_adv_2`
+  CONSTRAINT `fk_bookings_adv_1`
     FOREIGN KEY (`opening_slot_id`)
     REFERENCES `slots` (`slot_id`)
     ON DELETE NO ACTION
     ON UPDATE NO ACTION,
-  CONSTRAINT `fk_bookings_adv_3`
+  CONSTRAINT `fk_bookings_adv_2`
     FOREIGN KEY (`closing_slot_id`)
     REFERENCES `slots` (`slot_id`)
     ON DELETE NO ACTION
@@ -317,10 +324,43 @@ CREATE TABLE IF NOT EXISTS `bookings` (
 ) ENGINE = InnoDB
 COMMENT = 'Bookings table with interval values part of a fk relation';
 
-SET SQL_MODE=@OLD_SQL_MODE;
-SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
-SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 
+-- -----------------------------------------------------
+-- Table `bookings` 
+-- -----------------------------------------------------
+
+DROP TABLE IF EXISTS `bookings`;
+CREATE TABLE IF NOT EXISTS `bookings` (
+  
+  `booking_id` INT NOT NULL AUTO_INCREMENT,
+  `opening_slot_id` INT NOT NULL,
+  `closing_slot_id` INT NOT NULL,
+  
+  
+  -- Extra Columns that booking might have
+  `address_line_1` VARCHAR(255) NOT NULL,
+  `address_line_2` VARCHAR(255),
+  `cust_title` VARCHAR(5),
+  `cust_fname` VARCHAR(100) NOT NULL,
+  `cust_lname` VARCHAR(100) NOT NULL,
+  
+   -- Constraints and indexes
+  PRIMARY KEY (`booking_id`),
+  
+  
+  -- Normal Constraints
+  CONSTRAINT `fk_bookings_1`
+    FOREIGN KEY (`opening_slot_id`)
+    REFERENCES `slots` (`slot_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION,
+  CONSTRAINT `fk_bookings_2`
+    FOREIGN KEY (`closing_slot_id`)
+    REFERENCES `slots` (`slot_id`)
+    ON DELETE NO ACTION
+    ON UPDATE NO ACTION 
+) ENGINE = InnoDB
+COMMENT = 'Bookings table with interval values part of a fk relation';
 
 -- -----------------------------------------------------
 -- Table `prices_adv` books with ritree

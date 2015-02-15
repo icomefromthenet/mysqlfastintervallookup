@@ -34,12 +34,10 @@ SET profiling=1;
 
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
-    SELECT `j`.`price_id`
-    FROM (
-        SELECT `price_id`,`range_high`
-        FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`),
-        (
-            -- innerRight
+    
+    (SELECT `price_id`,`range_high`
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`)
+    JOIN (  -- innerRight
             SELECT `node` FROM `timeslot_nodes_inner_right`
             UNION ALL
             -- upper
@@ -47,29 +45,27 @@ FROM (
             UNION ALL
             -- forkNode
             SELECT @forkNode as `node`
-        ) q 
-        WHERE  `i`.`node` = `q`.`node`
-        AND `i`.`range_low` > @minPrice
+    ) q ON  `i`.`node` = `q`.`node`
+        WHERE `i`.`range_low` > @minPrice
         AND `i`.`range_low` < @maxPrice
-        AND `i`.`range_high` > @maxPrice
+        AND `i`.`range_high` > @maxPrice)
         
+    UNION ALL
+        
+    (SELECT `price_id`,`range_high`
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`)
+    JOIN (-- topRight
+        SELECT `node` FROM `timeslot_nodes_top_right`
+        -- bottomRight
         UNION ALL
-        
-        SELECT `price_id`,`range_high`
-        FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`),
-        (
-            -- topRight
-            SELECT `node` FROM `timeslot_nodes_top_right`
-            -- bottomRight
-            UNION ALL
-            SELECT `node` FROM `timeslot_nodes_bottom_right`
-        ) q 
-        WHERE  `i`.`node` = `q`.`node`
-        AND  @minPrice < `i`.`range_low`
-        AND `i`.`range_low` < @maxPrice
-    ) j 
-    ORDER BY `j`.`range_high` ASC
+        SELECT `node` FROM `timeslot_nodes_bottom_right`
+    ) q ON  `i`.`node` = `q`.`node`
+    WHERE  @minPrice < `i`.`range_low`
+    AND `i`.`range_low` < @maxPrice)
+    
+    ORDER BY `range_high` ASC
     LIMIT 10
+    
 ) a, prices_adv b
 WHERE `a`.`price_id` = `b`.`price_id`;
 

@@ -137,6 +137,18 @@ BEGIN
 	  	       ,'TestFname'
 	  	       ,'TestLname'
 	  	);
+	  	
+	  	INSERT INTO bookings_adv (booking_id,opening_slot_id,closing_slot_id,node,address_line_1,address_line_2,cust_title,cust_fname,cust_lname,node) 
+	  	VALUES (NULL
+	  	       ,l_timeslot_random_open
+	  	       ,l_timeslot_random_close
+	  	       ,'78 Test Street Example Suburb'
+	  	       ,'Example City ,11111'
+	  	       ,'Mr'
+	  	       ,'TestFname'
+	  	       ,'TestLname'
+	  	       ,utl_fork_node(l_timeslot_random_open,l_timeslot_random_close)
+	  	);
 	
 		SET l_loop_count = l_loop_count -1;
 		

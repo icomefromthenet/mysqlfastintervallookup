@@ -10,7 +10,7 @@ CALL bm_install_run(10);
 -- 1000 cost variations
 -- using max from slots as thats root node that tree uses values in (cents)
 -- min value = 1 value in (cents)
-CALL bm_install_seed_price(1000000,(SELECT max(slot_id) FROM slots),1);
+CALL bm_install_seed_price(5000000,(SELECT max(slot_id) FROM slots),1);
 
 
 -- 2000 bookings

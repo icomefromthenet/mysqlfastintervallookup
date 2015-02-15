@@ -4,20 +4,19 @@ select `range_high`,`range_low` from `prices_adv` ORDER BY RAND() LIMIT 1 INTO @
 -- -----------------------------------------------------------------------------
 
 SET profiling=1;
-SET profiling_history_size = 100;
-
 
 SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
 FROM ( SELECT `price_id`
     FROM `prices_basic` 
     WHERE `range_low` = @minPrice
     AND `range_high` < @maxPrice
+    ORDER BY `range_low` ASC
+    LIMIT 10
 ) a, prices_basic b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
 
 
+SET profiling=0;
 --  ----------------------------------------------------------------------------
 --  Test of the Starts Allens relation using tree method
 -- -----------------------------------------------------------------------------
@@ -25,26 +24,28 @@ LIMIT 10;
 CALL bm_rules_timeslot_nodes_inner_left(@minPrice,@maxPrice);
 SET @forkNode =  utl_fork_node(@minPrice,@maxPrice);
 
+SET profiling=1;
+
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
     SELECT `i`.`price_id`
-    FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`), (
-        -- innerLeft
-        SELECT `node` FROM `timeslot_nodes_inner_left`
-        UNION ALL
-        -- lower
-        SELECT @minPrice as `node`
-        UNION ALL
-        -- fork
-        SELECT @forkNode as `node`
-    ) n
-    WHERE `i`.`node` = `n`.`node`
-    AND `range_high` < @maxPrice
-    AND `range_low` =  @minPrice
+        FROM `prices_adv` i USE INDEX (`idx_prices_adv_lowerUpperIndex`), (
+            -- innerLeft
+            SELECT `node` FROM `timeslot_nodes_inner_left`
+            UNION ALL
+            -- lower
+            SELECT @minPrice as `node`
+            UNION ALL
+            -- fork
+            SELECT @forkNode as `node`
+        ) n
+        WHERE `i`.`node` = `n`.`node`
+        AND `i`.`range_high` < @maxPrice
+        AND `i`.`range_low` =  @minPrice
+        ORDER BY `i`.`range_low` ASC
+        LIMIT 10
 ) a, prices_adv b
-WHERE `a`.`price_id` = `b`.`price_id`
-ORDER BY `b`.`price_id` ASC
-LIMIT 10;
+WHERE `a`.`price_id` = `b`.`price_id`;
 
 
 SHOW PROFILES;

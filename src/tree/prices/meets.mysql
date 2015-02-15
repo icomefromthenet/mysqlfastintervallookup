@@ -28,18 +28,18 @@ SET profiling=1;
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
 FROM (
     SELECT `price_id`
-    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`),(
-    -- topLeft
-    SELECT `node` FROM `timeslot_nodes_top_left`
-    UNION ALL
-    -- botttomLeft
-    SELECT `node` FROM `timeslot_nodes_bottom_left`    
-    -- lower    
-    UNION ALL
-    SELECT @minPrice as node
-    ) q
-    WHERE `i`.`node` = `q`.`node`
-    AND `i`.`range_high` = @minPrice
+    FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`)
+    JOIN (
+        -- topLeft
+        SELECT `node` FROM `timeslot_nodes_top_left`
+        UNION ALL
+        -- botttomLeft
+        SELECT `node` FROM `timeslot_nodes_bottom_left`
+        -- lower    
+        UNION ALL
+        SELECT @minPrice as node
+    ) q ON  `i`.`node` = `q`.`node`
+    WHERE `i`.`range_high` = @minPrice
     ORDER BY `i`.`range_high` ASC
     LIMIT 10
 

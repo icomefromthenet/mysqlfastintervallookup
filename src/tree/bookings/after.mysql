@@ -1,0 +1,41 @@
+select `range_high`,`range_low` from `bookings_adv` ORDER BY RAND() LIMIT 1 INTO @maxSlot,@minSlot;
+
+--  ----------------------------------------------------------------------------
+--  Test of the After Allens relation 
+-- -----------------------------------------------------------------------------
+SET profiling=1;
+
+SELECT `a`.`booking_id`,`s1`.`slot_open`,`s2`.`slot_close`
+FROM (
+    SELECT `b`.`opening_slot_id`,`b`.`closing_slot_id`,`b`.`booking_id` 
+    FROM bookings `b` 
+    WHERE `b`.`opening_slot_id` > @maxslot 
+    ORDER BY `b`.`opening_slot_id` DESC
+    LIMIT 10
+) a  
+JOIN slots `s1` ON `s1`.`slot_id` = `a`.`opening_slot_id` 
+JOIN slots `s2` ON `s2`.`slot_id` = `a`.`closing_slot_id`;
+
+
+SET profiling=0;
+
+--  ----------------------------------------------------------------------------
+--  Test of the After Allens relation with Tree
+-- -----------------------------------------------------------------------------
+
+SET profiling=1;
+
+SELECT `a`.`booking_id`, `s1`.`slot_open`,`s2`.`slot_close`
+FROM (
+    SELECT `b`.`opening_slot_id`,`b`.`closing_slot_id`,`b`.`booking_id`
+    FROM bookings_adv `b` USE INDEX(`idx_bookings_adv_lowerUpperIndex`) 
+    WHERE `b`.`node` > @maxslot 
+    AND `b`.`opening_slot_id` > @maxslot 
+    ORDER BY `b`.`booking_id` DESC
+    LIMIT 10
+) a  
+JOIN slots `s1` ON s1.slot_id = a.opening_slot_id 
+JOIN slots `s2` ON s2.slot_id = a.closing_slot_id;
+
+
+SHOW PROFILES;
