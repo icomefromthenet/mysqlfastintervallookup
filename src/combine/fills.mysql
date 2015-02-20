@@ -33,8 +33,8 @@ SET profiling=1;
 -- 
 --  (p1 >= q1 AND p2 <= q2)  
 --
--- These find intervals in which p includes all the clock tickets that are in
--- the interval q.  
+-- These find intervals in which q includes all the clock tickets that are in
+-- the interval p.  
 
     SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
     FROM timeslot_slots a
@@ -55,14 +55,14 @@ SET profiling=1;
 -- Fills-by
 -- -----------------------------------------------------------------------------
 --
---        Finishes            Starts                During           Equals
---       p <------->      p <------->              p<----->      p<-------->
---  q <------------>  OR  q <------------>  OR  q<----------> OR q<-------->
+--        Finishes                  Starts             During           Equals
+--  p <---------------->      p <-------------->     p<-------->       p<-------->
+--  q     <------------>  OR  q <------------>   OR   q<----->      OR q<-------->
 -- 
 --  (p1 <= q1 AND p2 >= q2)  
 --
--- These find intervals in which q includes all the clock tickets that are in
--- the interval p.  
+-- These find intervals in which p includes all the clock tickets that are in
+-- the interval q.  
 
     SELECT a.timeslot_id,a.opening_slot_id, s1.slot_open,a.closing_slot_id,s2.slot_close
     FROM timeslot_slots a

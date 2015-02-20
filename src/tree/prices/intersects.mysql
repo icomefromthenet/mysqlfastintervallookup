@@ -1,18 +1,19 @@
 SELECT `range_high`,`range_low` FROM `prices_adv` ORDER BY RAND() LIMIT 1 INTO @maxPrice,@minPrice;
+
 --  ----------------------------------------------------------------------------
 --  Test of the Intersects Combined Relation
 -- -----------------------------------------------------------------------------
 SET profiling=1;
 
-SELECT `b`.`price_id`,round(`b`.`range_low`/100,2),round(`b`.`range_high`/100,2)
-FROM ( SELECT `price_id`
+SELECT `a`.`price_id`
+from (
+    select `price_id`
     FROM `prices_basic` 
     WHERE `range_low` <= @maxPrice
     AND `range_high` > @minPrice
-    ORDER BY `range_high` ASC
-    LIMIT 10
-) a, prices_basic b
-WHERE `a`.`price_id` = `b`.`price_id`;
+    order by `range_high`
+) a
+limit 10;
 
 SET profiling=0;
 --  ----------------------------------------------------------------------------
@@ -24,35 +25,36 @@ CALL bm_rules_timeslot_right_nodes(@minPrice,@maxPrice);
 SET profiling=1;
 
 
-SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)
-FROM ( 
+select `a`.`price_id`
+from( 
     
-    (SELECT `i`.`price_id`,`i`.`range_high`
+    SELECT `i`.`price_id`,`i`.`range_high`
     FROM `prices_adv` i USE INDEX (`idx_prices_adv_upperLowerIndex`)
     JOIN `timeslot_left_nodes_result` l ON `i`.`node` = `l`.`node`
     AND `i`.`range_high` > @minPrice
-    ORDER BY `range_high` ASC)
+   
+    
     
     UNION ALL
     
-    (SELECT `i`.`price_id`, `i`.`range_high`
+    SELECT `i`.`price_id`,`i`.`range_high`
     FROM `prices_adv` i  USE INDEX (`idx_prices_adv_lowerUpperIndex`)
     JOIN timeslot_right_nodes_result l ON `i`.node = `l`.`node`
     AND `i`.`range_low` <= @maxPrice
-    ORDER BY `range_high` ASC)
+   
     
     UNION ALL 
     
-    (SELECT `i`.`price_id`,`i`.`range_high`
+    SELECT `i`.`price_id`,`i`.`range_high`
     FROM `prices_adv` i 
     WHERE `i`.`node` BETWEEN @minPrice AND @maxPrice
-    ORDER BY `range_high` ASC) 
-    
-    
-    LIMIT 10
+   
+    order by `range_high`
+       
+     
+) a
+limit 10;
 
-) a , prices_adv b
-WHERE `a`.`price_id` = `b`.`price_id`;
 
 
 SHOW PROFILES;
