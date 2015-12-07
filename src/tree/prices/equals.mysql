@@ -20,8 +20,8 @@ WHERE `a`.`price_id` = `b`.`price_id`;
 --  Test of the Equals Allens relation using tree method
 -- -----------------------------------------------------------------------------
 
-CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
-CALL bm_rules_timeslot_nodes_top_right(@minPrice,@maxPrice);
+-- CALL bm_rules_timeslot_nodes_top_left(@minPrice,@maxPrice);
+-- CALL bm_rules_timeslot_nodes_top_right(@minPrice,@maxPrice);
 SET @forkNode  = utl_fork_node(@minPrice,@maxPrice);
 
 SELECT `b`.`price_id`, round(`b`.`range_low`/100,2), round(`b`.`range_high`/100,2)

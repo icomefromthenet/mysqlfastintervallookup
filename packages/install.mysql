@@ -169,7 +169,7 @@ $$
 
 DROP PROCEDURE IF EXISTS `bm_install_seed_price`$$
 
-CREATE PROCEDURE `bm_install_seed_price` (IN numCosts INT, IN maxHigh INT, IN minLow INT)
+CREATE PROCEDURE `bm_install_seed_price` (IN numCosts INT, IN maxHigh INT, IN minLow INT,IN mean FLOAT,IN stdv FLOAT)
 BEGIN
 
 	DECLARE l_loop_count INT DEFAULT 0;
@@ -185,11 +185,21 @@ BEGIN
 		CALL util_proc_setup();
 	END IF;
 	
+	-- seed random value table
+	
+	/*
+	INSERT INTO `random_v` (`id`,`rando`)
+	SELECT f.i*100000 + e.i*10000 + d.i *1000 + c.i *100 + b.i*10 + a.i
+		  ,gauss(10000,5) 
+	FROM `ints`
+	JOIN `ints` a JOIN `ints` b JOIN `ints` c JOIN `ints` d JOIN `ints` e JOIN f
+	WHERE f.i*100000 + e.i*10000 + d.i*1000 + c.i *100 + b.i*10 + a.i ;
+	*/
 	
 	costLoop:WHILE l_loop_count > 0 DO
 	
-		SET l_random_low  = minLow + FLOOR(RAND() * (maxHigh-minLow));
-		SET l_random_high = l_random_low + FLOOR(RAND()*(maxHigh-l_random_low)) + 1;
+		SET l_random_low  =  minLow + FLOOR(RAND() * (maxHigh-minLow));
+		SET l_random_high = l_random_low + FLOOR(gauss(mean,stdv));
 		
 		INSERT INTO `prices_adv` (`price_id`, `range_low`,`range_high`,`node`,`product_description`,`product_name`, `extra_a`,`extra_b`,`extra_c`)
 		VALUES (NULL,l_random_low,l_random_high,utl_fork_node(l_random_low,l_random_high),'A test product description','A test product name','a','b','c');

@@ -141,3 +141,18 @@ END$$
 -- -----------------------------------------------------
 -- //End of  Following utl_proc_* adapted--
 -- -----------------------------------------------------
+
+-- -----------------------------------------------------
+-- Procedures for `gauss`
+-- -----------------------------------------------------
+
+DROP FUNCTION IF EXISTS `gauss` $$
+
+CREATE FUNCTION `gauss` (mean float, stdev float) 
+RETURNS float
+BEGIN
+    set @x=rand(), @y=rand();
+    set @gaus = ((sqrt(-2*log(@x))*cos(2*pi()*@y))*stdev)+mean;
+    return @gaus;
+END;
+$$

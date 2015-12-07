@@ -426,6 +426,20 @@ CREATE TABLE IF NOT EXISTS `prices_basic` (
 ) ENGINE = InnoDB
 COMMENT = 'Common example of price range range table';
 
+-- -----------------------------------------------------
+-- Table `random_v` books with ritree
+-- -----------------------------------------------------
+DROP TABLE IF EXISTS `random_v` ;
+CREATE TABLE random_v (
+    id int,
+    rando float,
+    
+    PRIMARY KEY (`id`)
+)
+ENGINE = InnoDB
+COMMENT = 'Hold random values';
+
 SET SQL_MODE=@OLD_SQL_MODE;
 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS;
 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
+
